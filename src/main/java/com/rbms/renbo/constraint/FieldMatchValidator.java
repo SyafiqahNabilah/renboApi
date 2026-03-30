@@ -1,9 +1,9 @@
 package com.rbms.renbo.constraint;
 
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import org.springframework.beans.BeanWrapperImpl;
 
-import org.apache.commons.beanutils.BeanUtils;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 
 public class FieldMatchValidator implements ConstraintValidator<FieldMatch, Object> {
 
@@ -18,11 +18,16 @@ public class FieldMatchValidator implements ConstraintValidator<FieldMatch, Obje
 
     @Override
     public boolean isValid(final Object value, final ConstraintValidatorContext context) {
-        try {
-            final Object firstObj = BeanUtils.getProperty(value, firstFieldName);
-            final Object secondObj = BeanUtils.getProperty(value, secondFieldName);
-            return firstObj == null && secondObj == null || firstObj != null && firstObj.equals(secondObj);
-        } catch (final Exception ignore) {}
+    try {
+        BeanWrapperImpl wrapper = new BeanWrapperImpl(value);
+
+        Object first = wrapper.getPropertyValue(firstFieldName);
+        Object second = wrapper.getPropertyValue(secondFieldName);
+
+        return (first == null && second == null) || 
+               (first != null && first.equals(second));
+    } catch (Exception e) {
         return true;
     }
+}
 }
