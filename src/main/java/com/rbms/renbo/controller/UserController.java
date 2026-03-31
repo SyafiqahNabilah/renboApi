@@ -6,6 +6,8 @@
 
 package com.rbms.renbo.controller;
 
+import com.rbms.renbo.model.LoginRequestDto;
+import com.rbms.renbo.model.LoginResponseDto;
 import com.rbms.renbo.model.UserResponseDto;
 import com.rbms.renbo.model.userRegistrationDto;
 import com.rbms.renbo.service.userService;
@@ -37,5 +39,10 @@ public class UserController {
     @PostMapping("/signup/register")
     public UserResponseDto saveSignup(@RequestBody userRegistrationDto dto) {
         return userService.insertNewUser(dto);
+    }
+
+    @PostMapping("/login")
+    public LoginResponseDto login(@RequestBody LoginRequestDto loginRequest) {
+        return userService.login(loginRequest);
     }
 }
