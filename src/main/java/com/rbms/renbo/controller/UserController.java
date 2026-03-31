@@ -6,8 +6,8 @@
 
 package com.rbms.renbo.controller;
 
-import com.rbms.renbo.dto.userRegistrationDto;
 import com.rbms.renbo.model.UserResponseDto;
+import com.rbms.renbo.model.userRegistrationDto;
 import com.rbms.renbo.service.userService;
 import org.springframework.web.bind.annotation.*;
 

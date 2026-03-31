@@ -4,16 +4,16 @@
  * and open the template in the editor.
  */
 
-package com.rbms.renbo.dto;
+package com.rbms.renbo.model;
 
 import com.rbms.renbo.constant.UserRoleEnum;
 import com.rbms.renbo.entity.PlanPackage;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
+import lombok.Data;
 
-@Getter
+@Data
 public class userRegistrationDto {
     @NotEmpty
     String firstName;
