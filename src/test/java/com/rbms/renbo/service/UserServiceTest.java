@@ -2,18 +2,23 @@ package com.rbms.renbo.service;
 
 import com.rbms.renbo.config.exception.ApiException;
 import com.rbms.renbo.constant.ErrorCodeEnum;
+import com.rbms.renbo.constant.UserRoleEnum;
 import com.rbms.renbo.constant.UserStatusEnum;
 import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.UserMapper;
+import com.rbms.renbo.model.LoginRequestDto;
+import com.rbms.renbo.model.LoginResponseDto;
 import com.rbms.renbo.model.UserResponseDto;
 import com.rbms.renbo.model.userRegistrationDto;
 import com.rbms.renbo.repository.UserRepository;
+import com.rbms.renbo.util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,22 +39,31 @@ class UserServiceTest {
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private JwtUtil jwtUtil;
+
     @InjectMocks
     private userService userService;
 
     private User testUser;
     private UserResponseDto testUserResponseDto;
     private userRegistrationDto testRegistrationDto;
+    private UUID testUserId;
 
     @BeforeEach
     void setUp() {
+        testUserId = UUID.randomUUID();
+        
         testUser = new User();
-        testUser.setUserID(UUID.randomUUID());
+        testUser.setUserID(testUserId);
         testUser.setEmail("test@example.com");
         testUser.setFirstName("John");
         testUser.setLastName("Doe");
-        testUser.setPassword("password123");
-        testUser.setRole(null);
+        testUser.setPassword("hashedPassword");
+        testUser.setRole(UserRoleEnum.RENTER);
         testUser.setStatus(UserStatusEnum.ACTIVE);
 
         testUserResponseDto = new UserResponseDto();
@@ -59,6 +73,7 @@ class UserServiceTest {
         testRegistrationDto.setEmail("newuser@example.com");
         testRegistrationDto.setFirstName("Jane");
         testRegistrationDto.setLastName("Smith");
+        testRegistrationDto.setPassword("password123");
     }
 
     @Test
@@ -183,6 +198,7 @@ class UserServiceTest {
     void insertNewUser_successfullyCreatesNewUser() {
         when(userRepository.findUserByEmail(testRegistrationDto.getEmail())).thenReturn(null);
         when(userMapper.updateEntityFromDto(testRegistrationDto)).thenReturn(testUser);
+        when(passwordEncoder.encode(testRegistrationDto.getPassword())).thenReturn("hashedPassword");
         when(userRepository.save(testUser)).thenReturn(testUser);
         when(userMapper.toDto(testUser)).thenReturn(testUserResponseDto);
 
@@ -192,6 +208,7 @@ class UserServiceTest {
         assertEquals(testUserResponseDto.getEmail(), result.getEmail());
         verify(userRepository).findUserByEmail(testRegistrationDto.getEmail());
         verify(userMapper).updateEntityFromDto(testRegistrationDto);
+        verify(passwordEncoder).encode(testRegistrationDto.getPassword());
         verify(userRepository).save(testUser);
         verify(userMapper).toDto(testUser);
     }
@@ -214,12 +231,73 @@ class UserServiceTest {
     void insertNewUser_mapsRegistrationDtoToEntity() {
         when(userRepository.findUserByEmail(testRegistrationDto.getEmail())).thenReturn(null);
         when(userMapper.updateEntityFromDto(testRegistrationDto)).thenReturn(testUser);
+        when(passwordEncoder.encode(testRegistrationDto.getPassword())).thenReturn("hashedPassword");
         when(userRepository.save(testUser)).thenReturn(testUser);
         when(userMapper.toDto(testUser)).thenReturn(testUserResponseDto);
 
         userService.insertNewUser(testRegistrationDto);
 
         verify(userMapper).updateEntityFromDto(testRegistrationDto);
+    }
+
+    @Test
+    void login_successfullyAuthenticatesUserAndReturnsToken() {
+        LoginRequestDto loginRequest = new LoginRequestDto();
+        loginRequest.setEmail("test@example.com");
+        loginRequest.setPassword("password123");
+
+        when(userRepository.findUserByEmail(loginRequest.getEmail())).thenReturn(testUser);
+        when(passwordEncoder.matches(loginRequest.getPassword(), testUser.getPassword())).thenReturn(true);
+        when(jwtUtil.generateToken(testUser.getUserID(), testUser.getEmail(), testUser.getRole()))
+                .thenReturn("jwt-token-123");
+
+        LoginResponseDto result = userService.login(loginRequest);
+
+        assertNotNull(result);
+        assertEquals("jwt-token-123", result.getToken());
+        assertEquals("John Doe", result.getFullName());
+        assertEquals("test@example.com", result.getEmail());
+        assertEquals(UserRoleEnum.RENTER, result.getRole());
+        verify(userRepository).findUserByEmail(loginRequest.getEmail());
+        verify(passwordEncoder).matches(loginRequest.getPassword(), testUser.getPassword());
+        verify(jwtUtil).generateToken(testUser.getUserID(), testUser.getEmail(), testUser.getRole());
+    }
+
+    @Test
+    void login_throwsExceptionWhenUserNotFound() {
+        LoginRequestDto loginRequest = new LoginRequestDto();
+        loginRequest.setEmail("nonexistent@example.com");
+        loginRequest.setPassword("password123");
+
+        when(userRepository.findUserByEmail(loginRequest.getEmail())).thenReturn(null);
+
+        ApiException exception = assertThrows(ApiException.class, () ->
+                userService.login(loginRequest)
+        );
+
+        assertEquals(ErrorCodeEnum.USER_NOT_FOUND, exception.getErrorCode());
+        verify(userRepository).findUserByEmail(loginRequest.getEmail());
+        verifyNoInteractions(passwordEncoder);
+        verifyNoInteractions(jwtUtil);
+    }
+
+    @Test
+    void login_throwsExceptionWhenPasswordIncorrect() {
+        LoginRequestDto loginRequest = new LoginRequestDto();
+        loginRequest.setEmail("test@example.com");
+        loginRequest.setPassword("wrongPassword");
+
+        when(userRepository.findUserByEmail(loginRequest.getEmail())).thenReturn(testUser);
+        when(passwordEncoder.matches(loginRequest.getPassword(), testUser.getPassword())).thenReturn(false);
+
+        ApiException exception = assertThrows(ApiException.class, () ->
+                userService.login(loginRequest)
+        );
+
+        assertEquals(ErrorCodeEnum.BAD_REQUEST, exception.getErrorCode());
+        verify(userRepository).findUserByEmail(loginRequest.getEmail());
+        verify(passwordEncoder).matches(loginRequest.getPassword(), testUser.getPassword());
+        verifyNoInteractions(jwtUtil);
     }
 
     @Test
