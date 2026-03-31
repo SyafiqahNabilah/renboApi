@@ -1,8 +1,8 @@
 package com.rbms.renbo.mapper;
 
-import com.rbms.renbo.dto.userRegistrationDto;
 import com.rbms.renbo.entity.User;
 import com.rbms.renbo.model.UserResponseDto;
+import com.rbms.renbo.model.userRegistrationDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;

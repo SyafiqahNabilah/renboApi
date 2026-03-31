@@ -9,10 +9,10 @@ package com.rbms.renbo.service;
 import com.rbms.renbo.config.exception.ApiException;
 import com.rbms.renbo.constant.ErrorCodeEnum;
 import com.rbms.renbo.constant.UserStatusEnum;
-import com.rbms.renbo.dto.userRegistrationDto;
 import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.UserMapper;
 import com.rbms.renbo.model.UserResponseDto;
+import com.rbms.renbo.model.userRegistrationDto;
 import com.rbms.renbo.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -69,7 +69,6 @@ public class userService {
     }
 
     public Optional<User> getUserDetails(UUID userId) {
-        Optional<User> ifExisting = repo.findById(userId);
-        return ifExisting;
+        return repo.findById(userId);
     }
 }
