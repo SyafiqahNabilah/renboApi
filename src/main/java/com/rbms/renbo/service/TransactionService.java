@@ -127,6 +127,27 @@ public class TransactionService {
         return transactionMapper.toDto(savedTransaction);
     }
 
+    public TransactionResponseDto approveTransactionWithOwnerValidation(Long transactionId, UUID loggedInUserId, String ownerNote) {
+        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
+        if (optionalTransaction.isEmpty()) {
+            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
+        }
+
+        Transactions transaction = optionalTransaction.get();
+
+        // Verify that the logged-in user is the item owner
+        if (transaction.getOwner() == null || !transaction.getOwner().getUserID().equals(loggedInUserId)) {
+            throw new ApiException(ErrorCodeEnum.UNAUTHORIZED);
+        }
+
+        transaction.setTransactionStatus(TransactionStatusEnum.APPROVED);
+        transaction.setApprovedDate(LocalDateTime.now());
+        transaction.setOwnerNote(ownerNote);
+
+        Transactions savedTransaction = transactionRepository.save(transaction);
+        return transactionMapper.toDto(savedTransaction);
+    }
+
     public TransactionResponseDto cancelTransaction(Long transactionId, String reason) {
         Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
         if (optionalTransaction.isEmpty()) {
