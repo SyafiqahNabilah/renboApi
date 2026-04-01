@@ -244,6 +244,35 @@ public class TransactionService {
         return transactionMapper.toDto(savedTransaction);
     }
 
+    public TransactionResponseDto activateTransactionWithOwnerValidation(Long transactionId, UUID loggedInUserId) {
+        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
+        if (optionalTransaction.isEmpty()) {
+            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
+        }
+
+        Transactions transaction = optionalTransaction.get();
+
+        // Verify that the logged-in user is the item owner
+        if (transaction.getOwner() == null || !transaction.getOwner().getUserID().equals(loggedInUserId)) {
+            throw new ApiException(ErrorCodeEnum.UNAUTHORIZED);
+        }
+
+        // Verify transaction is in APPROVED status
+        if (transaction.getTransactionStatus() != TransactionStatusEnum.APPROVED) {
+            throw new ApiException(ErrorCodeEnum.BAD_REQUEST);
+        }
+
+        transaction.setTransactionStatus(TransactionStatusEnum.ACTIVE);
+
+        // Update item availability to RENTED
+        if (transaction.getItem() != null) {
+            itemService.updateItemAvailability(transaction.getItem().getID(), "RENTED");
+        }
+
+        Transactions savedTransaction = transactionRepository.save(transaction);
+        return transactionMapper.toDto(savedTransaction);
+    }
+
     public TransactionResponseDto recordPaymentWithOwnerValidation(Long transactionId, UUID loggedInUserId, String paymentRef) {
         Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
         if (optionalTransaction.isEmpty()) {

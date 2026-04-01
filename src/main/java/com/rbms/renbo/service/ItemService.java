@@ -131,4 +131,19 @@ public class ItemService {
             return "Failed";
         }
     }
+
+    public void updateItemAvailability(UUID itemId, String availability) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new ApiException(ErrorCodeEnum.ITEM_NOT_FOUND));
+
+        item.setAvailability(availability);
+        itemRepository.save(item);
+    }
+
+    public UUID getItemOwnerId(UUID itemId) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new ApiException(ErrorCodeEnum.ITEM_NOT_FOUND));
+
+        return item.getOwner().getUserID();
+    }
 }
