@@ -8,6 +8,9 @@ Returns all transactions where the authenticated user is the owner, with optiona
 ### GET /transaction/renter
 Returns all transactions where the authenticated user is the renter (their rental requests).
 
+### POST /transaction/request
+Allows renters to submit rental requests for items.
+
 ### Authentication
 - **Required**: JWT token in Authorization header
 - **Format**: `Bearer <jwt-token>`
@@ -16,8 +19,20 @@ Returns all transactions where the authenticated user is the renter (their renta
 - `status` (optional): Filter transactions by status
   - Values: `PENDING`, `APPROVED`, `ACTIVE`, `COMPLETED`, `CANCELLED`
 
+### Request Body (for POST /transaction/request)
+
+```json
+{
+  "itemId": "550e8400-e29b-41d4-a716-446655440000",
+  "startDate": "2026-04-01",
+  "endDate": "2026-04-05",
+  "transactionType": "RENT",
+  "renterNote": "Please deliver to my office"
+}
+```
+
 ### Response
-Both endpoints return a list of `TransactionResponseDto` objects containing:
+Both GET endpoints return a list of `TransactionResponseDto` objects containing:
 
 ```json
 [
@@ -49,6 +64,8 @@ Both endpoints return a list of `TransactionResponseDto` objects containing:
 ]
 ```
 
+POST /transaction/request returns a single `TransactionResponseDto` object.
+
 ### Example Usage
 
 #### Owner: Get all my transactions
@@ -69,6 +86,21 @@ GET /transaction/renter
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
+#### Renter: Submit rental request
+```bash
+POST /transaction/request
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "itemId": "550e8400-e29b-41d4-a716-446655440000",
+  "startDate": "2026-04-01",
+  "endDate": "2026-04-05",
+  "transactionType": "RENT",
+  "renterNote": "Please deliver to my office"
+}
+```
+
 ### Error Responses
 
 #### Missing Authorization Header
@@ -85,9 +117,20 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 }
 ```
 
+#### Item Not Found
+```json
+{
+  "error": "Item not found"
+}
+```
+
 ### Implementation Notes
 
 - User ID is extracted from the JWT token's `userId` claim
 - Status filtering is case-insensitive
 - Response includes all transaction details with resolved names (not just IDs)
+- For rental requests, owner ID is automatically looked up from the item
+- Daily rate and deposit amount are snapshotted from the item at request time
+- Total days and total amount are automatically calculated
+- Transaction status is set to PENDING by default
 - For performance, consider adding a database-level filter for status in production
