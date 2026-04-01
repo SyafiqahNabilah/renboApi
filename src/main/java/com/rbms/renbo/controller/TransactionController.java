@@ -52,4 +52,27 @@ public class TransactionController {
             return transactionService.findByOwnerId(ownerId);
         }
     }
+
+    @GetMapping("/renter")
+    public List<TransactionResponseDto> getMyRentalRequests(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        // Extract userId from JWT token
+        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
+                      authHeader.substring(7) : null;
+
+        if (token == null) {
+            throw new RuntimeException("Authorization token required");
+        }
+
+        // Extract userId from token
+        String userIdStr = jwtUtil.extractUserId(token);
+        if (userIdStr == null) {
+            throw new RuntimeException("Invalid token");
+        }
+
+        UUID renterId = UUID.fromString(userIdStr);
+
+        return transactionService.findByRenterId(renterId);
+    }
 }

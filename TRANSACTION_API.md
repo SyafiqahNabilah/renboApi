@@ -1,19 +1,23 @@
 # Transaction Controller API
 
-## Endpoint: GET /transaction/my-transactions
+## Endpoints
 
+### GET /transaction/my-transactions
 Returns all transactions where the authenticated user is the owner, with optional status filtering.
+
+### GET /transaction/renter
+Returns all transactions where the authenticated user is the renter (their rental requests).
 
 ### Authentication
 - **Required**: JWT token in Authorization header
 - **Format**: `Bearer <jwt-token>`
 
-### Query Parameters
+### Query Parameters (for /my-transactions)
 - `status` (optional): Filter transactions by status
   - Values: `PENDING`, `APPROVED`, `ACTIVE`, `COMPLETED`, `CANCELLED`
 
 ### Response
-Returns a list of `TransactionResponseDto` objects containing:
+Both endpoints return a list of `TransactionResponseDto` objects containing:
 
 ```json
 [
@@ -47,21 +51,21 @@ Returns a list of `TransactionResponseDto` objects containing:
 
 ### Example Usage
 
-#### Get all my transactions
+#### Owner: Get all my transactions
 ```bash
 GET /transaction/my-transactions
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-#### Get only active transactions
+#### Owner: Get only active transactions
 ```bash
 GET /transaction/my-transactions?status=ACTIVE
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-#### Get completed transactions
+#### Renter: Get my rental requests
 ```bash
-GET /transaction/my-transactions?status=COMPLETED
+GET /transaction/renter
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
