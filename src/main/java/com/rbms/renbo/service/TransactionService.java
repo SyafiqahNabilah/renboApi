@@ -43,8 +43,18 @@ public class TransactionService {
         log.debug("Creating transaction for item {} by renter {}",
                 requestDto.getItemId(), requestDto.getRenterId());
 
-        // Validate that owner, renter, and item exist
-        Optional<User> owner = userService.getUserDetails(requestDto.getOwnerId());
+        // Get item details first to determine owner if not provided
+        ItemResponseDto item = itemService.findById(requestDto.getItemId());
+        
+        // Determine ownerId - either from request or from item
+        UUID ownerId = requestDto.getOwnerId();
+        if (ownerId == null) {
+            // Look up owner from item
+            ownerId = itemService.getItemOwnerId(requestDto.getItemId());
+        }
+
+        // Validate that owner, renter exist
+        Optional<User> owner = userService.getUserDetails(ownerId);
         if (owner.isEmpty()) {
             throw new ApiException(ErrorCodeEnum.USER_NOT_FOUND);
         }
@@ -55,7 +65,6 @@ public class TransactionService {
         }
 
         // Get item details to populate rates if not provided
-        ItemResponseDto item = itemService.findById(requestDto.getItemId());
         if (requestDto.getDailyRate() == null) {
             requestDto.setDailyRate(item.getRate());
         }
