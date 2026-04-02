@@ -7,6 +7,7 @@ import com.rbms.renbo.model.TransactionResponseDto;
 import com.rbms.renbo.service.TransactionService;
 import com.rbms.renbo.service.ItemService;
 import com.rbms.renbo.util.JwtUtil;
+import com.rbms.renbo.util.PaymentUtil;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,11 +20,13 @@ public class TransactionController {
     private final TransactionService transactionService;
     private final ItemService itemService;
     private final JwtUtil jwtUtil;
+    private final PaymentUtil paymentUtil;
 
-    public TransactionController(TransactionService transactionService, ItemService itemService, JwtUtil jwtUtil) {
+    public TransactionController(TransactionService transactionService, ItemService itemService, JwtUtil jwtUtil, PaymentUtil paymentUtil) {
         this.transactionService = transactionService;
         this.itemService = itemService;
         this.jwtUtil = jwtUtil;
+        this.paymentUtil = paymentUtil;
     }
 
     @GetMapping("/my-transactions")
@@ -171,5 +174,36 @@ public class TransactionController {
 
         // Verify that the logged-in user is the item owner and activate the transaction
         return transactionService.activateTransactionWithOwnerValidation(id, loggedInUserId);
+    }
+
+    @PutMapping("/{id}/payment")
+    public TransactionResponseDto recordPayment(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) String paymentRef) {
+
+        // Extract userId from JWT token
+        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
+                      authHeader.substring(7) : null;
+
+        if (token == null) {
+            throw new RuntimeException("Authorization token required");
+        }
+
+        // Extract userId from token
+        String userIdStr = jwtUtil.extractUserId(token);
+        if (userIdStr == null) {
+            throw new RuntimeException("Invalid token");
+        }
+
+        UUID loggedInUserId = UUID.fromString(userIdStr);
+
+        // Generate payment reference if not provided
+        if (paymentRef == null || paymentRef.trim().isEmpty()) {
+            paymentRef = paymentUtil.generatePaymentReference();
+        }
+
+        // Verify that the logged-in user is the item owner and record payment
+        return transactionService.recordPaymentWithOwnerValidation(id, loggedInUserId, paymentRef);
     }
 }
