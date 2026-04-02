@@ -293,7 +293,36 @@ public class TransactionService {
         Transactions savedTransaction = transactionRepository.save(transaction);
         return transactionMapper.toDto(savedTransaction);
     }
+    public TransactionResponseDto completeTransactionWithOwnerValidation(Long transactionId, UUID loggedInUserId) {
+        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
+        if (optionalTransaction.isEmpty()) {
+            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
+        }
 
+        Transactions transaction = optionalTransaction.get();
+
+        // Verify that the logged-in user is the item owner
+        if (transaction.getOwner() == null || !transaction.getOwner().getUserID().equals(loggedInUserId)) {
+            throw new ApiException(ErrorCodeEnum.UNAUTHORIZED);
+        }
+
+        // Verify transaction is in ACTIVE status
+        if (transaction.getTransactionStatus() != TransactionStatusEnum.ACTIVE) {
+            throw new ApiException(ErrorCodeEnum.BAD_REQUEST);
+        }
+
+        transaction.setTransactionStatus(TransactionStatusEnum.COMPLETED);
+        transaction.setReturnedDate(LocalDateTime.now());
+
+        // Update item availability back to AVAILABLE
+        if (transaction.getItem() != null) {
+            itemService.updateItemAvailability(transaction.getItem().getID(), "AVAILABLE");
+        }
+
+        Transactions savedTransaction = transactionRepository.save(transaction);
+        return transactionMapper.toDto(savedTransaction);
+    }
+  
     public TransactionResponseDto rejectTransactionWithOwnerValidation(Long transactionId, UUID loggedInUserId, String ownerNote) {
         Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
         if (optionalTransaction.isEmpty()) {
