@@ -347,4 +347,47 @@ public class TransactionService {
         Transactions savedTransaction = transactionRepository.save(transaction);
         return transactionMapper.toDto(savedTransaction);
     }
+
+    public TransactionResponseDto cancelTransactionWithValidation(Long transactionId, UUID loggedInUserId, String note) {
+        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
+        if (optionalTransaction.isEmpty()) {
+            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
+        }
+
+        Transactions transaction = optionalTransaction.get();
+
+        boolean isOwner = transaction.getOwner() != null && transaction.getOwner().getUserID().equals(loggedInUserId);
+        boolean isRenter = transaction.getRenter() != null && transaction.getRenter().getUserID().equals(loggedInUserId);
+
+        if (!isOwner && !isRenter) {
+            throw new ApiException(ErrorCodeEnum.UNAUTHORIZED);
+        }
+
+        TransactionStatusEnum status = transaction.getTransactionStatus();
+
+        if (isRenter && status != TransactionStatusEnum.PENDING) {
+            throw new ApiException(ErrorCodeEnum.BAD_REQUEST);
+        }
+
+        if (isOwner && status != TransactionStatusEnum.PENDING && status != TransactionStatusEnum.APPROVED && status != TransactionStatusEnum.ACTIVE) {
+            throw new ApiException(ErrorCodeEnum.BAD_REQUEST);
+        }
+
+        // If status was ACTIVE, item was rented, set back to AVAILABLE
+        if (status == TransactionStatusEnum.ACTIVE && transaction.getItem() != null) {
+            itemService.updateItemAvailability(transaction.getItem().getID(), "AVAILABLE");
+        }
+
+        transaction.setTransactionStatus(TransactionStatusEnum.CANCELLED);
+
+        // Set the note based on who is canceling
+        if (isRenter) {
+            transaction.setRenterNote(note);
+        } else {
+            transaction.setOwnerNote(note);
+        }
+
+        Transactions savedTransaction = transactionRepository.save(transaction);
+        return transactionMapper.toDto(savedTransaction);
+    }
 }

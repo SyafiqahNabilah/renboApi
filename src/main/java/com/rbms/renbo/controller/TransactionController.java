@@ -255,4 +255,30 @@ public class TransactionController {
         // Verify that the logged-in user is the item owner and reject the transaction
         return transactionService.rejectTransactionWithOwnerValidation(id, loggedInUserId, ownerNote);
     }
+
+    @PutMapping("/{id}/cancel")
+    public TransactionResponseDto cancelTransaction(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) String note) {
+
+        // Extract userId from JWT token
+        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
+                      authHeader.substring(7) : null;
+
+        if (token == null) {
+            throw new RuntimeException("Authorization token required");
+        }
+
+        // Extract userId from token
+        String userIdStr = jwtUtil.extractUserId(token);
+        if (userIdStr == null) {
+            throw new RuntimeException("Invalid token");
+        }
+
+        UUID loggedInUserId = UUID.fromString(userIdStr);
+
+        // Verify that the logged-in user is the renter or owner and cancel the transaction
+        return transactionService.cancelTransactionWithValidation(id, loggedInUserId, note);
+    }
 }
