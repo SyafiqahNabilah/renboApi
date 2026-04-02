@@ -206,4 +206,30 @@ public class TransactionController {
         // Verify that the logged-in user is the item owner and record payment
         return transactionService.recordPaymentWithOwnerValidation(id, loggedInUserId, paymentRef);
     }
+
+    @PutMapping("/{id}/reject")
+    public TransactionResponseDto rejectTransaction(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) String ownerNote) {
+
+        // Extract userId from JWT token
+        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
+                      authHeader.substring(7) : null;
+
+        if (token == null) {
+            throw new RuntimeException("Authorization token required");
+        }
+
+        // Extract userId from token
+        String userIdStr = jwtUtil.extractUserId(token);
+        if (userIdStr == null) {
+            throw new RuntimeException("Invalid token");
+        }
+
+        UUID loggedInUserId = UUID.fromString(userIdStr);
+
+        // Verify that the logged-in user is the item owner and reject the transaction
+        return transactionService.rejectTransactionWithOwnerValidation(id, loggedInUserId, ownerNote);
+    }
 }

@@ -293,4 +293,29 @@ public class TransactionService {
         Transactions savedTransaction = transactionRepository.save(transaction);
         return transactionMapper.toDto(savedTransaction);
     }
+
+    public TransactionResponseDto rejectTransactionWithOwnerValidation(Long transactionId, UUID loggedInUserId, String ownerNote) {
+        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
+        if (optionalTransaction.isEmpty()) {
+            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
+        }
+
+        Transactions transaction = optionalTransaction.get();
+
+        // Verify that the logged-in user is the item owner
+        if (transaction.getOwner() == null || !transaction.getOwner().getUserID().equals(loggedInUserId)) {
+            throw new ApiException(ErrorCodeEnum.UNAUTHORIZED);
+        }
+
+        // Verify transaction is in PENDING status
+        if (transaction.getTransactionStatus() != TransactionStatusEnum.PENDING) {
+            throw new ApiException(ErrorCodeEnum.BAD_REQUEST);
+        }
+
+        transaction.setTransactionStatus(TransactionStatusEnum.CANCELLED);
+        transaction.setOwnerNote(ownerNote);
+
+        Transactions savedTransaction = transactionRepository.save(transaction);
+        return transactionMapper.toDto(savedTransaction);
+    }
 }
