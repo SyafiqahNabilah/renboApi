@@ -16,7 +16,6 @@ public interface UserMapper {
     UserResponseDto toDto(User user);
 
     @Mapping(target = "userID", ignore = true)
-    @Mapping(target = "subsPlan", ignore = true)
     @Mapping(target = "status", constant = "ACTIVE")
     User updateEntityFromDto(userRegistrationDto dto);
 

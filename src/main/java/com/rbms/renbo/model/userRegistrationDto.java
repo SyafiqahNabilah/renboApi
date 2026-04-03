@@ -31,5 +31,4 @@ public class userRegistrationDto {
     @NotEmpty
     UserRoleEnum role;// "OWNER" or "RENTER" — admin created separately
     PlanPackage subsPlan;
-
 }

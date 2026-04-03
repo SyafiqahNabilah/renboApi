@@ -31,6 +31,11 @@ public class UserController {
         return userService.listAllBasedOnRole(role);
     }
 
+    @GetMapping("/users")
+    public List<UserResponseDto> getUsers() {
+        return userService.listAllUsers();
+    }
+
     @PutMapping("/deactive/{id}")
     public String deactivateUser(@PathVariable UUID id) {
         return userService.deactivateUser(id);

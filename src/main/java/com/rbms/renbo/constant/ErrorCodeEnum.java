@@ -11,7 +11,8 @@ public enum ErrorCodeEnum {
     ITEM_ALREADY_EXISTS(400, "E400_ITEM", "Item already exists"),
 
     // User
-    USER_NOT_FOUND(404, "E404_USER", "User not found"),
+    USER_NOT_FOUND(404, "ERRUSER001", "User not found"),
+    WRONG_PASSWORD(404, "ERRUSER002", "Password and Email not matched"),
 
     // Rental
     RENTAL_NOT_FOUND(404, "E404_RENTAL", "Rental not found"),

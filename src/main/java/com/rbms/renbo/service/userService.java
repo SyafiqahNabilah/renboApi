@@ -98,6 +98,13 @@ public class userService {
         return new LoginResponseDto(token, fullName, user.getEmail(), user.getRole());
     }
 
+    public List<UserResponseDto> listAllUsers() {
+        List<User> users = repo.findAll();
+        return users.stream()
+                .map(mapper::toDto)
+                .toList();
+    }
+
     public Optional<User> getUserDetails(UUID userId) {
         return repo.findById(userId);
     }
