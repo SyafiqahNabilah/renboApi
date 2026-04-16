@@ -8,6 +8,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
     @Value("${app.upload.dir}")
@@ -15,8 +18,13 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/img/catalog/**")
-                .addResourceLocations("file:" + uploadDir + "/");
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+
+        registry.addResourceHandler("/img/products/**")
+                .addResourceLocations(
+                        uploadPath.toUri().toString(),
+                        "classpath:/static/img/products/"
+                );
     }
 
     @Bean

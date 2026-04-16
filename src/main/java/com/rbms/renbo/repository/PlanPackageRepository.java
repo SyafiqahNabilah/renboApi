@@ -6,9 +6,10 @@
 
 package com.rbms.renbo.repository;
 
-import com.rbms.renbo.model.Renbo;
-import com.rbms.renbo.model.subscribe;
 import java.util.List;
+import java.util.UUID;
+
+import com.rbms.renbo.entity.PlanPackage;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,7 +18,7 @@ import org.springframework.stereotype.Repository;
  * @author Syafiqah Nabilah
  */
 @Repository
-public interface subsRepository extends CrudRepository<subscribe, Integer>{
-    List<subscribe> findAll();
-    
+public interface PlanPackageRepository extends CrudRepository<PlanPackage, UUID>{
+    List<PlanPackage> findAll();
+
 }

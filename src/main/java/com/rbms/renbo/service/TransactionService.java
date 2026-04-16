@@ -85,12 +85,14 @@ public class TransactionService {
         return transactionMapper.toDto(savedTransaction);
     }
 
-    public TransactionResponseDto findById(Long transactionId) {
-        Optional<Transactions> transaction = transactionRepository.findById(transactionId);
-        if (transaction.isEmpty()) {
+    public List<TransactionResponseDto> findAll(Long transactionId) {
+        List<Transactions> transactions = transactionRepository.findAll();
+        if (transactions.isEmpty()) {
             throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
         }
-        return transactionMapper.toDto(transaction.get());
+        return transactions.stream()
+                .map(transactionMapper::toDto)
+                .toList();
     }
 
     public List<TransactionResponseDto> findByOwnerId(UUID ownerId) {

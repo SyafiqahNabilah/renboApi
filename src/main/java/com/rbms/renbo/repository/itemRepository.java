@@ -6,6 +6,7 @@
 package com.rbms.renbo.repository;
 
 import com.rbms.renbo.entity.Item;
+import com.rbms.renbo.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -23,7 +24,10 @@ public interface itemRepository extends JpaRepository<Item, UUID> {
     List<Item> findAll();
 
     @Query(value = "select * from item where ownerID=?1", nativeQuery = true)
-    List<Item> findByUser(int ownerID);
+    List<Item> findByUser(UUID ownerID);
 
-//    Owner findByEmail(String email);
+    @Query("SELECT i.owner.userID, COUNT(i) FROM Item i GROUP BY i.owner.userID")
+    List<Object[]> countItemsByUser();
+
+    List<Item> findAllByOwner(User owner);
 }

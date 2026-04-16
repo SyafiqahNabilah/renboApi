@@ -11,19 +11,16 @@ import com.rbms.renbo.constant.ErrorCodeEnum;
 import com.rbms.renbo.constant.UserStatusEnum;
 import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.UserMapper;
-import com.rbms.renbo.model.LoginRequestDto;
-import com.rbms.renbo.model.LoginResponseDto;
-import com.rbms.renbo.model.UserResponseDto;
-import com.rbms.renbo.model.userRegistrationDto;
+import com.rbms.renbo.model.*;
 import com.rbms.renbo.repository.UserRepository;
+import com.rbms.renbo.repository.itemRepository;
 import com.rbms.renbo.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -37,12 +34,14 @@ public class userService {
     private final UserMapper mapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final itemRepository itemRepo;
 
-    public userService(UserRepository repo, UserMapper mapper, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+    public userService(UserRepository repo, UserMapper mapper, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, itemRepository itemRepo) {
         this.repo = repo;
         this.mapper = mapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.itemRepo = itemRepo;
     }
 
     public List<UserResponseDto> listAllBasedOnRole(String role) {
@@ -95,15 +94,28 @@ public class userService {
         String token = jwtUtil.generateToken(user.getUserID(), user.getEmail(), user.getRole());
         
         String fullName = user.getFirstName() + " " + user.getLastName();
-        return new LoginResponseDto(token, fullName, user.getEmail(), user.getRole());
+        return new LoginResponseDto(token, fullName, user.getEmail(), user.getUserID(), user.getRole());
     }
 
     public List<UserResponseDto> listAllUsers() {
-        List<User> users = repo.findAll();
-        return users.stream()
-                .map(mapper::toDto)
-                .toList();
-    }
+            List<User> users = repo.findAll();
+
+            return users.stream()
+                    .map(user -> {
+                        UserResponseDto dto = mapper.toDto(user);
+                        Map<UUID, Long> itemCountMap = itemRepo.countItemsByUser()
+                                .stream()
+                                .collect(Collectors.toMap(
+                                        obj -> (UUID) obj[0],
+                                        obj -> (Long) obj[1]
+                                ));
+                        int count = itemCountMap.getOrDefault(user.getUserID(), 0L).intValue();
+                        dto.setItemCount(count);
+
+                        return dto;
+                    })
+                    .toList();
+        }
 
     public Optional<User> getUserDetails(UUID userId) {
         return repo.findById(userId);

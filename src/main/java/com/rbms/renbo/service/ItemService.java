@@ -13,6 +13,7 @@ import com.rbms.renbo.mapper.ItemMapper;
 import com.rbms.renbo.model.ItemRequestDto;
 import com.rbms.renbo.model.ItemResponseDto;
 import com.rbms.renbo.repository.itemRepository;
+import com.rbms.renbo.util.ItemUuidUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -33,14 +34,19 @@ public class ItemService {
     @Value("${app.upload.dir}") // from application.properties
     private String uploadDir;
 
-    private itemRepository itemRepository;
+    @Value("${app.public.base-url:http://localhost:8080}")
+    private String publicBaseUrl;
+
+    private final itemRepository itemRepository;
     private final ItemMapper mapper;
     private final userService userService;
+    private final ItemUuidUtil itemUuidUtil;
 
-    public ItemService(userService userService, ItemMapper mapper, itemRepository repo) {
+    public ItemService(userService userService, ItemMapper mapper, itemRepository repo, ItemUuidUtil itemUuidUtil) {
         this.userService = userService;
         this.mapper = mapper;
         this.itemRepository = repo;
+        this.itemUuidUtil = itemUuidUtil;
     }
 
     public ItemResponseDto saveItem(ItemRequestDto dto,
@@ -49,18 +55,23 @@ public class ItemService {
                                     MultipartFile image3) throws IOException {
 
         log.info("requestDTO:{}", dto);
+        if (dto.getOwnerId() == null) {
+            throw new ApiException(ErrorCodeEnum.BAD_REQUEST, "ownerId is required");
+        }
+
+        User owner = userService.getUserDetails(dto.getOwnerId())
+                .orElseThrow(() -> new ApiException(ErrorCodeEnum.USER_NOT_FOUND));
+
         Item item = mapper.updateEntityFromRequestDto(dto);
+        item.setID(itemUuidUtil.generateItemId());
         // Save images and store the filename
         item.setItemImage1(saveFile(image1));
         item.setItemImage2(saveFile(image2));
         item.setItemImage3(saveFile(image3));
-        User owner = userService.getUserDetails(dto.getOwnerId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
         item.setOwner(owner);
         log.debug("itemEntity before save:{}", item);
         Item saved = itemRepository.save(item);
-        return mapper.toDto(saved);
+        return withImageUrls(mapper.toDto(saved));
     }
 
     private String saveFile(MultipartFile file) throws IOException {
@@ -69,15 +80,19 @@ public class ItemService {
         // Validate file type
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("Only image files are allowed.");
+            throw new ApiException(ErrorCodeEnum.BAD_REQUEST, "Only image files are allowed");
         }
 
         // Generate a unique filename to avoid collisions
-        String originalName = StringUtils.cleanPath(file.getOriginalFilename());
-        String extension = originalName.substring(originalName.lastIndexOf("."));
-        String uniqueName = UUID.randomUUID().toString() + extension;
+        String originalName = StringUtils.cleanPath(file.getOriginalFilename() == null ? "" : file.getOriginalFilename());
+        String extension = "";
+        int extensionIndex = originalName.lastIndexOf(".");
+        if (extensionIndex >= 0 && extensionIndex < originalName.length() - 1) {
+            extension = originalName.substring(extensionIndex);
+        }
+        String uniqueName = UUID.randomUUID() + extension;
 
-        Path uploadPath = Paths.get(uploadDir);
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
@@ -93,20 +108,7 @@ public class ItemService {
         ItemResponseDto dto = itemRepository.findById(id)
                 .map(mapper::toDto)
                 .orElseThrow(() -> new ApiException(ErrorCodeEnum.ITEM_NOT_FOUND));
-        return dto;
-    }
-
-    public List<ItemResponseDto> listAllOwnerItem(int ownerId) {
-        List<ItemResponseDto> list;
-        try {
-            list = itemRepository.findByUser(ownerId)
-                    .stream()
-                    .map(mapper::toDto)
-                    .toList();
-        } catch (Exception e) {
-            throw new ApiException(ErrorCodeEnum.INTERNAL_SERVER_ERROR);
-        }
-        return list;
+        return withImageUrls(dto);
     }
 
     public ItemResponseDto updateItem(UUID id, ItemRequestDto item) {
@@ -116,11 +118,27 @@ public class ItemService {
     }
 
     public List<ItemResponseDto> listOfItem() {
-        List<ItemResponseDto> list = itemRepository.findAll()
-                .stream()
-                .map(mapper::toDto)
-                .toList();
-        return list;
+        try {
+            List<Item> items = itemRepository.findAll();
+            return items.stream()
+                    .map(mapper::toDto)
+                    .map(this::withImageUrls)
+                    .toList();
+        } catch (Exception e) {
+            throw new ApiException(ErrorCodeEnum.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public List<ItemResponseDto> listOfItemByOwner(UUID ownerId) {
+        try {
+            List<Item> items = itemRepository.findByUser(ownerId);
+            return items.stream()
+                    .map(mapper::toDto)
+                    .map(this::withImageUrls)
+                    .toList();
+        } catch (Exception e) {
+            throw new ApiException(ErrorCodeEnum.INTERNAL_SERVER_ERROR);
+        }
     }
 
     public String deleteItem(UUID id) {
@@ -145,5 +163,24 @@ public class ItemService {
                 .orElseThrow(() -> new ApiException(ErrorCodeEnum.ITEM_NOT_FOUND));
 
         return item.getOwner().getUserID();
+    }
+
+    private ItemResponseDto withImageUrls(ItemResponseDto dto) {
+        dto.setItemImage1(toPublicImageUrl(dto.getItemImage1()));
+        dto.setItemImage2(toPublicImageUrl(dto.getItemImage2()));
+        dto.setItemImage3(toPublicImageUrl(dto.getItemImage3()));
+        return dto;
+    }
+
+    private String toPublicImageUrl(String fileName) {
+        if (!StringUtils.hasText(fileName)) {
+            return fileName;
+        }
+
+        if (fileName.startsWith("http://") || fileName.startsWith("https://")) {
+            return fileName;
+        }
+
+        return publicBaseUrl.replaceAll("/+$", "") + "/img/products/" + fileName;
     }
 }

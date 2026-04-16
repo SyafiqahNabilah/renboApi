@@ -9,9 +9,11 @@ package com.rbms.renbo.controller;
 import com.rbms.renbo.model.ItemRequestDto;
 import com.rbms.renbo.model.ItemResponseDto;
 import com.rbms.renbo.service.ItemService;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,13 +31,14 @@ import java.util.UUID;
 @RequestMapping("/item")
 public class ItemController {
 
-    @Autowired
-    ItemService itemService;
+    private final ItemService itemService;
 
-    String systemDir = System.getProperty("user.dir");
+    public ItemController(ItemService itemService) {
+        this.itemService = itemService;
+    }
 
     // save item in db
-    @PostMapping(path = "/save", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ItemResponseDto> addItem(
             @ModelAttribute ItemRequestDto item) throws IOException {
         log.info("request:{}", item);
@@ -61,9 +64,20 @@ public class ItemController {
 //        return itemService.saveItem(item);
 //    }
 
-    @GetMapping("/list")
+    @GetMapping("/all")
     public List<ItemResponseDto> showList() {
         return itemService.listOfItem();
+    }
+
+    @GetMapping("all/{ownerId}")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "All users retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions")
+    })
+    public List<ItemResponseDto> showListByOwner(@PathVariable UUID ownerId) {
+        return itemService.listOfItemByOwner(ownerId);
     }
 
     @GetMapping("/details/{id}")
@@ -84,7 +98,7 @@ public class ItemController {
         return itemService.updateItem(id, item);
     }
 
-    @DeleteMapping("Item/delete/{id}")
+    @DeleteMapping("/delete/{id}")
     public String deleteStudent(@PathVariable("id") UUID id) {
         return itemService.deleteItem(id);
     }

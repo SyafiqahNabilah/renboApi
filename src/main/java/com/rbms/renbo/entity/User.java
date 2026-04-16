@@ -5,6 +5,7 @@ import com.rbms.renbo.constant.UserStatusEnum;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.sql.Timestamp;
 import java.util.UUID;
 
 //Entity for table name/entity in db
@@ -21,7 +22,8 @@ public class User {
     private String password;
     private String phoneNo;
     private String address;
-    private String noAccount;     // bank account for owners
+    private String noAccount;// bank account for owners
+    private Timestamp joinedDate;
 
     @Enumerated(EnumType.STRING)
     private UserRoleEnum role;        // OWNER, RENTER, ADMIN
@@ -32,5 +34,5 @@ public class User {
     // Only relevant if role = OWNER
     @ManyToOne
     @JoinColumn(name = "subsID")
-    private PlanPackage subsPlan;
+    private PlanPackage planPackage;
 }

@@ -13,6 +13,9 @@ import org.mapstruct.ReportingPolicy;
 )
 public interface ItemMapper {
 
+    @Mapping(target = "itemImage1", expression = "java(item.getItemImage1() != null ? item.getItemImage1() : null)")
+    @Mapping(target = "itemImage2", expression = "java(item.getItemImage2() != null ? item.getItemImage2() : null)")
+    @Mapping(target = "itemImage3", expression = "java(item.getItemImage3() != null ? item.getItemImage3() : null)")
     ItemResponseDto toDto(Item item);
 
 

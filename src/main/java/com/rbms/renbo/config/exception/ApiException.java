@@ -11,6 +11,11 @@ public class ApiException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
+    public ApiException(ErrorCodeEnum errorCode, String message) {
+        super(message);
+        this.errorCode = errorCode;
+    }
+
     public ErrorCodeEnum getErrorCode() {
         return errorCode;
     }

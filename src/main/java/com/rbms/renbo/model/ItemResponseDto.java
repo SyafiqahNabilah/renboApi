@@ -19,15 +19,9 @@ public class ItemResponseDto {
     float rate;
     float deposit;
     String pickupMethod;
-    
-    // String itemImage_1;
-
-    // @Column(name = "itemImage_2")
-    // String itemImage_2;
-
-    // @Column(name = "itemImage_3")
-    // String itemImage_3;
-
+    String itemImage1;
+    String itemImage2;
+    String itemImage3;
     String availability;
 
 }

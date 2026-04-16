@@ -23,7 +23,6 @@ import java.util.UUID;
 public class Item implements Serializable {
     @Id
     @Column(name = "Id")
-    @GeneratedValue(strategy = GenerationType.AUTO)
     UUID ID;
     
     @ManyToOne
@@ -66,22 +65,4 @@ public class Item implements Serializable {
     String itemImage3;
     @Column(name = "availability")
     String availability;
-
-    @Transient
-    public String getPhotosImagePath() {
-        if (itemImage1 == null) return null;
-        return "/img/catalog/" + itemImage1;
-    }
-
-    public String getPhotosImagePath2() {
-        if (itemImage2 == null) return null;
-        return "/img/catalog/" + itemImage2;
-    }
-
-    public String getPhotosImagePath3() {
-        if (itemImage3 == null) return null;
-        return "/img/catalog/" + itemImage3;
-    }
-
-
 }
