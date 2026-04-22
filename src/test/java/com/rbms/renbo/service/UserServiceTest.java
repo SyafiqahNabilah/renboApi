@@ -6,15 +6,14 @@ import com.rbms.renbo.constant.UserRoleEnum;
 import com.rbms.renbo.constant.UserStatusEnum;
 import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.UserMapper;
-import com.rbms.renbo.model.LoginRequestDto;
-import com.rbms.renbo.model.LoginResponseDto;
-import com.rbms.renbo.model.UserResponseDto;
-import com.rbms.renbo.model.userRegistrationDto;
+import com.rbms.renbo.model.*;
 import com.rbms.renbo.repository.UserRepository;
 import com.rbms.renbo.util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -46,16 +45,15 @@ class UserServiceTest {
     private JwtUtil jwtUtil;
 
     @InjectMocks
-    private userService userService;
+    private UserService userService;
 
     private User testUser;
     private UserResponseDto testUserResponseDto;
-    private userRegistrationDto testRegistrationDto;
-    private UUID testUserId;
+    private UserRegistrationDto testRegistrationDto;
 
     @BeforeEach
     void setUp() {
-        testUserId = UUID.randomUUID();
+        UUID testUserId = UUID.randomUUID();
         
         testUser = new User();
         testUser.setUserID(testUserId);
@@ -69,7 +67,7 @@ class UserServiceTest {
         testUserResponseDto = new UserResponseDto();
         testUserResponseDto.setEmail("test@example.com");
 
-        testRegistrationDto = new userRegistrationDto();
+        testRegistrationDto = new UserRegistrationDto();
         testRegistrationDto.setEmail("newuser@example.com");
         testRegistrationDto.setFirstName("Jane");
         testRegistrationDto.setLastName("Smith");
@@ -90,6 +88,7 @@ class UserServiceTest {
         assertEquals(testUserResponseDto.getEmail(), result.get(0).getEmail());
         verify(userRepository).findByRole(role);
         verify(userMapper).toDto(testUser);
+        verify(userRepository).findByRole("OWNER");
     }
 
     @Test
@@ -135,7 +134,7 @@ class UserServiceTest {
 
         assertEquals("Success", result);
         verify(userRepository).findById(userId);
-        verify(userRepository).updateStatusUser(UserStatusEnum.DEACTIVED.getLDescription(), userId);
+        verify(userRepository).updateStatusUser("DEACTIVATED", userId);
     }
 
     @Test
@@ -150,25 +149,22 @@ class UserServiceTest {
         verify(userRepository, never()).updateStatusUser(anyString(), any());
     }
 
-    @Test
-    void deactivateUser_withDifferentUserIds() {
-        UUID userId1 = UUID.randomUUID();
-        UUID userId2 = UUID.randomUUID();
+    @ParameterizedTest
+    @ValueSource(strings = {"00000000-0000-0000-0000-000000000000", "00000000-3455-0000-0000-000000000000"})
+    void deactivateUser_withDifferentUserIds(UUID testUserId) {
+
         User user1 = new User();
-        user1.setUserID(userId1);
-        User user2 = new User();
-        user2.setUserID(userId2);
+        user1.setUserID(testUserId);
 
-        when(userRepository.findById(userId1)).thenReturn(Optional.of(user1));
-        when(userRepository.findById(userId2)).thenReturn(Optional.of(user2));
 
-        String result1 = userService.deactivateUser(userId1);
-        String result2 = userService.deactivateUser(userId2);
+        when(userRepository.findById(testUserId)).thenReturn(Optional.of(user1));
+
+        String result1 = userService.deactivateUser(testUserId);
 
         assertEquals("Success", result1);
-        assertEquals("Success", result2);
-        verify(userRepository).updateStatusUser(UserStatusEnum.DEACTIVED.getLDescription(), userId1);
-        verify(userRepository).updateStatusUser(UserStatusEnum.DEACTIVED.getLDescription(), userId2);
+
+        verify(userRepository).updateStatusUser(UserStatusEnum.DEACTIVATED.name(), testUserId);
+
     }
 
     @Test

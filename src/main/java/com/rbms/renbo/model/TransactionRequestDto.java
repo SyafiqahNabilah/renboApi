@@ -3,6 +3,7 @@ package com.rbms.renbo.model;
 import com.rbms.renbo.constant.TransactionTypeEnum;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -21,8 +22,8 @@ public class TransactionRequestDto {
     private LocalDate endDate;
 
     // Money (optional, can be calculated from item)
-    private Float dailyRate;
-    private Float depositAmount;
+    private BigDecimal dailyRate;
+    private BigDecimal depositAmount;
 
     // Notes
     private String renterNote;

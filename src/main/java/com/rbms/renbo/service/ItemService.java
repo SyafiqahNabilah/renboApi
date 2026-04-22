@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.rbms.renbo.service;
 
 import com.rbms.renbo.config.exception.ApiException;
@@ -12,8 +7,7 @@ import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.ItemMapper;
 import com.rbms.renbo.model.ItemRequestDto;
 import com.rbms.renbo.model.ItemResponseDto;
-import com.rbms.renbo.repository.itemRepository;
-import com.rbms.renbo.util.ItemUuidUtil;
+import com.rbms.renbo.repository.ItemRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -37,16 +31,14 @@ public class ItemService {
     @Value("${app.public.base-url:http://localhost:8080}")
     private String publicBaseUrl;
 
-    private final itemRepository itemRepository;
+    private final ItemRepository itemRepository;
     private final ItemMapper mapper;
-    private final userService userService;
-    private final ItemUuidUtil itemUuidUtil;
+    private final UserService userService;
 
-    public ItemService(userService userService, ItemMapper mapper, itemRepository repo, ItemUuidUtil itemUuidUtil) {
+    public ItemService(UserService userService, ItemMapper mapper, ItemRepository repo) {
         this.userService = userService;
         this.mapper = mapper;
         this.itemRepository = repo;
-        this.itemUuidUtil = itemUuidUtil;
     }
 
     public ItemResponseDto saveItem(ItemRequestDto dto,
@@ -63,7 +55,6 @@ public class ItemService {
                 .orElseThrow(() -> new ApiException(ErrorCodeEnum.USER_NOT_FOUND));
 
         Item item = mapper.updateEntityFromRequestDto(dto);
-        item.setID(itemUuidUtil.generateItemId());
         // Save images and store the filename
         item.setItemImage1(saveFile(image1));
         item.setItemImage2(saveFile(image2));
@@ -111,43 +102,62 @@ public class ItemService {
         return withImageUrls(dto);
     }
 
-    public ItemResponseDto updateItem(UUID id, ItemRequestDto item) {
-        Item existing = mapper.updateEntityFromResponseDto(findById(id));
-        
-        return mapper.toDto(itemRepository.save(existing));
+    public Item getItemEntityById(UUID id) {
+        return itemRepository.findById(id)
+                .orElseThrow(() -> new ApiException(ErrorCodeEnum.ITEM_NOT_FOUND));
+    }
+
+    public ItemResponseDto updateItem(UUID id, ItemRequestDto item, UUID requestingUserId) {
+        Item existing = itemRepository.findById(id)
+                .orElseThrow(() -> new ApiException(ErrorCodeEnum.ITEM_NOT_FOUND));
+
+        // ✅ Authorization check - verify user owns this item
+        if (!existing.getOwner().getUserID().equals(requestingUserId)) {
+            throw new ApiException(ErrorCodeEnum.UNAUTHORIZED);
+        }
+
+        mapper.updateEntityFromRequestDto(item, existing);
+
+        if (item.getOwnerId() != null) {
+            // Prevent user from reassigning item to another owner (optional)
+            if (!item.getOwnerId().equals(requestingUserId)) {
+                throw new ApiException(ErrorCodeEnum.FORBIDDEN_OWNER_CHANGE);
+            }
+
+            User owner = userService.getUserDetails(item.getOwnerId())
+                    .orElseThrow(() -> new ApiException(ErrorCodeEnum.USER_NOT_FOUND));
+            existing.setOwner(owner);
+        }
+
+        return withImageUrls(mapper.toDto(itemRepository.save(existing)));
     }
 
     public List<ItemResponseDto> listOfItem() {
-        try {
-            List<Item> items = itemRepository.findAll();
-            return items.stream()
+        List<Item> items = itemRepository.findAll();
+        return items.stream()
                     .map(mapper::toDto)
                     .map(this::withImageUrls)
                     .toList();
-        } catch (Exception e) {
-            throw new ApiException(ErrorCodeEnum.INTERNAL_SERVER_ERROR);
-        }
     }
 
     public List<ItemResponseDto> listOfItemByOwner(UUID ownerId) {
-        try {
-            List<Item> items = itemRepository.findByUser(ownerId);
+        List<Item> items = itemRepository.findByUser(ownerId);
             return items.stream()
                     .map(mapper::toDto)
                     .map(this::withImageUrls)
                     .toList();
-        } catch (Exception e) {
-            throw new ApiException(ErrorCodeEnum.INTERNAL_SERVER_ERROR);
-        }
     }
 
-    public String deleteItem(UUID id) {
-        try {
+    public void deleteItem(UUID id, UUID requestingUserId) {
+        Item existing = itemRepository.findById(id)
+                    .orElseThrow(() -> new ApiException(ErrorCodeEnum.ITEM_NOT_FOUND));
+
+            // ✅ Authorization check - verify user owns this item
+            if (!existing.getOwner().getUserID().equals(requestingUserId)) {
+                throw new ApiException(ErrorCodeEnum.UNAUTHORIZED);
+            }
+
             itemRepository.deleteById(id);
-            return "Success";
-        } catch (ApiException e) {
-            return "Failed";
-        }
     }
 
     public void updateItemAvailability(UUID itemId, String availability) {
@@ -159,10 +169,7 @@ public class ItemService {
     }
 
     public UUID getItemOwnerId(UUID itemId) {
-        Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new ApiException(ErrorCodeEnum.ITEM_NOT_FOUND));
-
-        return item.getOwner().getUserID();
+        return getItemEntityById(itemId).getOwner().getUserID();
     }
 
     private ItemResponseDto withImageUrls(ItemResponseDto dto) {

@@ -8,7 +8,6 @@ import com.rbms.renbo.entity.Item;
 import com.rbms.renbo.entity.Transactions;
 import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.TransactionMapper;
-import com.rbms.renbo.model.ItemResponseDto;
 import com.rbms.renbo.model.TransactionRequestDto;
 import com.rbms.renbo.model.TransactionResponseDto;
 import com.rbms.renbo.repository.TransactionRepository;
@@ -26,12 +25,12 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final TransactionMapper transactionMapper;
-    private final userService userService;
+    private final UserService userService;
     private final ItemService itemService;
 
     public TransactionService(TransactionRepository transactionRepository,
                               TransactionMapper transactionMapper,
-                              userService userService,
+                              UserService userService,
                               ItemService itemService) {
         this.transactionRepository = transactionRepository;
         this.transactionMapper = transactionMapper;
@@ -44,8 +43,8 @@ public class TransactionService {
                 requestDto.getItemId(), requestDto.getRenterId());
 
         // Get item details first to determine owner if not provided
-        ItemResponseDto item = itemService.findById(requestDto.getItemId());
-        
+        Item itemEntity = itemService.getItemEntityById(requestDto.getItemId());
+
         // Determine ownerId - either from request or from item
         UUID ownerId = requestDto.getOwnerId();
         if (ownerId == null) {
@@ -66,10 +65,10 @@ public class TransactionService {
 
         // Get item details to populate rates if not provided
         if (requestDto.getDailyRate() == null) {
-            requestDto.setDailyRate(item.getRate());
+            requestDto.setDailyRate(itemEntity.getRate());
         }
         if (requestDto.getDepositAmount() == null) {
-            requestDto.setDepositAmount(item.getDeposit());
+            requestDto.setDepositAmount(itemEntity.getDeposit());
         }
 
         Transactions transaction = transactionMapper.updateEntityFromRequestDto(requestDto);
@@ -77,26 +76,15 @@ public class TransactionService {
         // Set the relationships
         transaction.setOwner(owner.get());
         transaction.setRenter(renter.get());
-        Item itemEntity = new Item();
-        itemEntity.setID(requestDto.getItemId());
         transaction.setItem(itemEntity);
 
         Transactions savedTransaction = transactionRepository.save(transaction);
         return transactionMapper.toDto(savedTransaction);
     }
 
-    public List<TransactionResponseDto> findAll(Long transactionId) {
-        List<Transactions> transactions = transactionRepository.findAll();
-        if (transactions.isEmpty()) {
-            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
-        }
-        return transactions.stream()
-                .map(transactionMapper::toDto)
-                .toList();
-    }
-
     public List<TransactionResponseDto> findByOwnerId(UUID ownerId) {
         List<Transactions> transactions = transactionRepository.findByOwnerId(ownerId);
+        log.debug("find transactions for ownerId: {}", ownerId);
         return transactions.stream()
                 .map(transactionMapper::toDto)
                 .toList();
@@ -109,34 +97,6 @@ public class TransactionService {
                 .toList();
     }
 
-    public List<TransactionResponseDto> findByItemId(UUID itemId) {
-        List<Transactions> transactions = transactionRepository.findByItemId(itemId);
-        return transactions.stream()
-                .map(transactionMapper::toDto)
-                .toList();
-    }
-
-    public List<TransactionResponseDto> findByStatus(String status) {
-        List<Transactions> transactions = transactionRepository.findByTransactionStatus(status);
-        return transactions.stream()
-                .map(transactionMapper::toDto)
-                .toList();
-    }
-
-    public TransactionResponseDto approveTransaction(Long transactionId, String ownerNote) {
-        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
-        if (optionalTransaction.isEmpty()) {
-            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
-        }
-
-        Transactions transaction = optionalTransaction.get();
-        transaction.setTransactionStatus(TransactionStatusEnum.APPROVED);
-        transaction.setApprovedDate(LocalDateTime.now());
-        transaction.setOwnerNote(ownerNote);
-
-        Transactions savedTransaction = transactionRepository.save(transaction);
-        return transactionMapper.toDto(savedTransaction);
-    }
 
     public TransactionResponseDto approveTransactionWithOwnerValidation(Long transactionId, UUID loggedInUserId, String ownerNote) {
         Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
@@ -159,91 +119,9 @@ public class TransactionService {
         return transactionMapper.toDto(savedTransaction);
     }
 
-    public TransactionResponseDto cancelTransaction(Long transactionId, String reason) {
-        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
-        if (optionalTransaction.isEmpty()) {
-            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
-        }
-
-        Transactions transaction = optionalTransaction.get();
-        transaction.setTransactionStatus(TransactionStatusEnum.CANCELLED);
-        transaction.setOwnerNote(reason);
-
-        Transactions savedTransaction = transactionRepository.save(transaction);
-        return transactionMapper.toDto(savedTransaction);
-    }
-
-    public TransactionResponseDto markAsActive(Long transactionId) {
-        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
-        if (optionalTransaction.isEmpty()) {
-            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
-        }
-
-        Transactions transaction = optionalTransaction.get();
-        transaction.setTransactionStatus(TransactionStatusEnum.ACTIVE);
-
-        Transactions savedTransaction = transactionRepository.save(transaction);
-        return transactionMapper.toDto(savedTransaction);
-    }
-
-    public TransactionResponseDto markAsCompleted(Long transactionId) {
-        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
-        if (optionalTransaction.isEmpty()) {
-            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
-        }
-
-        Transactions transaction = optionalTransaction.get();
-        transaction.setTransactionStatus(TransactionStatusEnum.COMPLETED);
-        transaction.setReturnedDate(LocalDateTime.now());
-
-        Transactions savedTransaction = transactionRepository.save(transaction);
-        return transactionMapper.toDto(savedTransaction);
-    }
-
     public List<TransactionResponseDto> getAllTransactions() {
-        List<Transactions> transactions = transactionRepository.findAll();
-        return transactions.stream()
-                .map(transactionMapper::toDto)
-                .toList();
-    }
-
-    public TransactionResponseDto completeTransaction(Long transactionId) {
-        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
-        if (optionalTransaction.isEmpty()) {
-            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
-        }
-
-        Transactions transaction = optionalTransaction.get();
-        
-        // Validate that transaction is in ACTIVE status before completing
-        if (transaction.getTransactionStatus() != TransactionStatusEnum.ACTIVE) {
-            throw new ApiException(ErrorCodeEnum.BAD_REQUEST);
-        }
-
-        transaction.setTransactionStatus(TransactionStatusEnum.COMPLETED);
-        transaction.setReturnedDate(LocalDateTime.now());
-
-        Transactions savedTransaction = transactionRepository.save(transaction);
-        return transactionMapper.toDto(savedTransaction);
-    }
-
-    public TransactionResponseDto recordPayment(Long transactionId, String paymentRef, PaymentStatusEnum paymentStatus) {
-        Optional<Transactions> optionalTransaction = transactionRepository.findById(transactionId);
-        if (optionalTransaction.isEmpty()) {
-            throw new ApiException(ErrorCodeEnum.RENTAL_NOT_FOUND);
-        }
-
-        Transactions transaction = optionalTransaction.get();
-        transaction.setPaymentRef(paymentRef);
-        transaction.setPaymentStatus(paymentStatus);
-        
-        // Set payment date if status is PAID
-        if (paymentStatus == PaymentStatusEnum.PAID) {
-            transaction.setPaymentDate(LocalDateTime.now());
-        }
-
-        Transactions savedTransaction = transactionRepository.save(transaction);
-        return transactionMapper.toDto(savedTransaction);
+        return transactionRepository.findAll()
+                .stream().map(transactionMapper::toDto).toList();
     }
 
     public TransactionResponseDto activateTransactionWithOwnerValidation(Long transactionId, UUID loggedInUserId) {
@@ -283,8 +161,11 @@ public class TransactionService {
 
         Transactions transaction = optionalTransaction.get();
 
-        // Verify that the logged-in user is the item owner
-        if (transaction.getOwner() == null || !transaction.getOwner().getUserID().equals(loggedInUserId)) {
+        // FIX: payment is recorded by the RENTER (not owner). Allow either party for flexibility.
+        boolean isOwner  = transaction.getOwner()  != null && transaction.getOwner().getUserID().equals(loggedInUserId);
+        boolean isRenter = transaction.getRenter() != null && transaction.getRenter().getUserID().equals(loggedInUserId);
+
+        if (!isOwner && !isRenter) {
             throw new ApiException(ErrorCodeEnum.UNAUTHORIZED);
         }
 

@@ -1,16 +1,7 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package com.rbms.renbo.controller;
 
-import com.rbms.renbo.model.LoginRequestDto;
-import com.rbms.renbo.model.LoginResponseDto;
-import com.rbms.renbo.model.UserResponseDto;
-import com.rbms.renbo.model.userRegistrationDto;
-import com.rbms.renbo.service.userService;
+import com.rbms.renbo.model.*;
+import com.rbms.renbo.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -27,9 +18,9 @@ import java.util.UUID;
 @Tag(name = "User Management", description = "APIs for user management")
 public class UserController {
 
-    private final userService userService;
+    private final UserService userService;
 
-    public UserController(userService userService) {
+    public UserController(UserService userService) {
         this.userService = userService;
     }
 
@@ -57,6 +48,18 @@ public class UserController {
         return userService.listAllUsers();
     }
 
+    @PutMapping("/activate/{id}")
+    @Operation(summary = "Activate user", description = "Activate a user account (requires authentication)")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User deactivated successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions")
+    })
+    public String activateUser(@PathVariable UUID id) {
+        return userService.activateUser(id);
+    }
+
     @PutMapping("/deactive/{id}")
     @Operation(summary = "Deactivate user", description = "Deactivate a user account (requires authentication)")
     @SecurityRequirement(name = "bearerAuth")
@@ -76,7 +79,7 @@ public class UserController {
             @ApiResponse(responseCode = "400", description = "Bad request - invalid input"),
             @ApiResponse(responseCode = "409", description = "Conflict - email already exists")
     })
-    public UserResponseDto saveSignup(@RequestBody userRegistrationDto dto) {
+    public UserResponseDto saveSignup(@RequestBody UserRegistrationDto dto) {
         return userService.insertNewUser(dto);
     }
 

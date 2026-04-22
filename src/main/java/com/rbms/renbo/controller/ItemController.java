@@ -1,14 +1,9 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package com.rbms.renbo.controller;
 
 import com.rbms.renbo.model.ItemRequestDto;
 import com.rbms.renbo.model.ItemResponseDto;
 import com.rbms.renbo.service.ItemService;
+import com.rbms.renbo.util.JwtUtil;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,37 +27,23 @@ import java.util.UUID;
 public class ItemController {
 
     private final ItemService itemService;
+    private final JwtUtil jwtUtil;
 
-    public ItemController(ItemService itemService) {
+    public ItemController(ItemService itemService, JwtUtil jwtUtil) {
         this.itemService = itemService;
+        this.jwtUtil = jwtUtil;
     }
 
     // save item in db
     @PostMapping(path = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ItemResponseDto> addItem(
+            @Valid
             @ModelAttribute ItemRequestDto item) throws IOException {
         log.info("request:{}", item);
         ItemResponseDto response = itemService.saveItem(item, item.getItemImage1(), item.getItemImage2(), item.getItemImage3());
 
-//        if (response.equals()) {
-//            return ResponseEntity.badRequest().build();
-//        }
-
         return ResponseEntity.ok(response);
     }
-    // get upload image form
-    // @GetMapping("/Add-img/{id}")
-    // public String addItemImg(@PathVariable("id") UUID id, Model model) {
-    // ItemResponseDto item = itemService.findById(id);
-    // model.addAttribute("item", item);
-    // return "owner/item-addImg";
-    // }
-
-    // save uploaded image in database
-//    @PostMapping("/save/image/{id}")
-//    public ItemResponseDto saveItemImage(@PathVariable("id") UUID id, ItemRequestDto item) {
-//        return itemService.saveItem(item);
-//    }
 
     @GetMapping("/all")
     public List<ItemResponseDto> showList() {
@@ -81,34 +62,26 @@ public class ItemController {
     }
 
     @GetMapping("/details/{id}")
-    public ItemResponseDto showItemDetails(@PathVariable("id") UUID id) {
+    public ItemResponseDto showItemDetails(@PathVariable UUID id) {
         return itemService.findById(id);
     }
 
-    // @GetMapping("/edit/{id}")
-    // public String editItem(@PathVariable("id") UUID id, Model model) {
-    // ItemResponseDto item = itemService.findById(id);
-    // // Owners owner = ownerRepository.findByOwnerEmail(auth.getName());
-    // model.addAttribute("item", item);
-    // return "owner/item-edit";
-    // }
-
-    @PostMapping("/update/{id}")
-    public ItemResponseDto updateStudent(@PathVariable UUID id, @Valid ItemRequestDto item) {
-        return itemService.updateItem(id, item);
+    @PutMapping("/update/{id}")
+    public ItemResponseDto updateItem(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable UUID id,
+            @Valid ItemRequestDto item) {
+        UUID ownerId = jwtUtil.validateUserExisting(authHeader);
+        //need to get authentication from bearer token, then get user id from token and pass to service to check if the user is the owner of the item
+        return itemService.updateItem(id, item, ownerId);
     }
 
     @DeleteMapping("/delete/{id}")
-    public String deleteStudent(@PathVariable("id") UUID id) {
-        return itemService.deleteItem(id);
+    public void deleteItem(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable UUID id) {
+
+        UUID ownerId = jwtUtil.validateUserExisting(authHeader);
+        itemService.deleteItem(id, ownerId);
     }
-
-    // @GetMapping("/item-details/{id}")
-    // public String showItemIndex(@PathVariable("id") int id, Model model) {
-    // Item item = itemRepository.findById(id)
-    // .orElseThrow(() -> new IllegalArgumentException("Invalid item Id:" + id));
-    // model.addAttribute("item", item);
-    // return "item-view";
-    // }
-
 }

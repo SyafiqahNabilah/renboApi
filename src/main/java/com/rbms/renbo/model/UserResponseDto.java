@@ -3,9 +3,11 @@ package com.rbms.renbo.model;
 import lombok.Data;
 
 import java.util.List;
+import java.util.UUID;
 
 @Data
 public class UserResponseDto {
+    private UUID id;
     private String fullName;
     private String email;
     private String address;

@@ -5,7 +5,10 @@ import com.rbms.renbo.model.TransactionRequestDto;
 import com.rbms.renbo.model.TransactionResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
+
+import java.math.BigDecimal;
 
 @Mapper(
         componentModel = "spring",
@@ -17,7 +20,7 @@ public interface TransactionMapper {
     @Mapping(target = "ownerEmail", expression = "java(transaction.getOwner() != null ? transaction.getOwner().getEmail() : null)")
     @Mapping(target = "renterName", expression = "java(transaction.getRenter() != null ? transaction.getRenter().getFirstName() + \" \" + transaction.getRenter().getLastName() : null)")
     @Mapping(target = "renterEmail", expression = "java(transaction.getRenter() != null ? transaction.getRenter().getEmail() : null)")
-    @Mapping(target = "itemName", expression = "java(transaction.getItem() != null ? transaction.getItem().getName() : null)")
+    @Mapping(target = "itemName", source = "transaction.item.name")
     @Mapping(target = "itemDescription", expression = "java(transaction.getItem() != null ? transaction.getItem().getDescription() : null)")
     TransactionResponseDto toDto(Transactions transaction);
 
@@ -32,7 +35,25 @@ public interface TransactionMapper {
     @Mapping(target = "transactionStatus", expression = "java(com.rbms.renbo.constant.TransactionStatusEnum.PENDING)")
     @Mapping(target = "paymentStatus", expression = "java(com.rbms.renbo.constant.PaymentStatusEnum.UNPAID)")
     @Mapping(target = "requestedDate", expression = "java(java.time.LocalDateTime.now())")
-    @Mapping(target = "totalDays", expression = "java((int) java.time.temporal.ChronoUnit.DAYS.between(dto.getStartDate(), dto.getEndDate()))")
-    @Mapping(target = "totalAmount", expression = "java(dto.getDailyRate() != null && dto.getEndDate() != null && dto.getStartDate() != null ? dto.getDailyRate() * java.time.temporal.ChronoUnit.DAYS.between(dto.getStartDate(), dto.getEndDate()) : 0.0f)")
+    @Mapping(target = "totalDays", source = "dto", qualifiedByName = "calculateTotalDays")
+    @Mapping(target = "totalAmount", source = "dto", qualifiedByName = "calculateTotalAmount")
     Transactions updateEntityFromRequestDto(TransactionRequestDto dto);
+
+    @Named("calculateTotalDays")
+    default int calculateTotalDays(TransactionRequestDto dto) {
+        if (dto.getStartDate() != null && dto.getEndDate() != null) {
+            return (int) java.time.temporal.ChronoUnit.DAYS.between(dto.getStartDate(), dto.getEndDate());
+        }
+        return 0;
+    }
+
+    @Named("calculateTotalAmount")
+    default BigDecimal calculateTotalAmount(TransactionRequestDto dto) {
+        if (dto.getDailyRate() != null) {
+            int totalDays = (int) java.time.temporal.ChronoUnit.DAYS.between(dto.getStartDate(), dto.getEndDate());
+            return dto.getDailyRate().multiply(new BigDecimal(totalDays));
+        }
+        return java.math.BigDecimal.ZERO;
+    }
+
 }

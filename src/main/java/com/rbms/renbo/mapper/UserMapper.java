@@ -1,8 +1,9 @@
 package com.rbms.renbo.mapper;
 
+import com.rbms.renbo.constant.UserRoleEnum;
 import com.rbms.renbo.entity.User;
+import com.rbms.renbo.model.UserRegistrationDto;
 import com.rbms.renbo.model.UserResponseDto;
-import com.rbms.renbo.model.userRegistrationDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -25,7 +26,8 @@ public interface UserMapper {
     @Mapping(target = "userID", ignore = true)
     @Mapping(target = "status", constant = "ACTIVE")
     @Mapping(target = "joinedDate", expression = "java(new java.sql.Timestamp(System.currentTimeMillis()))")
-    User updateEntityFromDto(userRegistrationDto dto);
+    @Mapping(target = "role", source = "dto.role", qualifiedByName = "getCode")
+    User updateEntityFromDto(UserRegistrationDto dto);
 
     @Named("extractJoinedDate")
     default String setJoinedDate(Timestamp joinedDate) {
@@ -34,11 +36,20 @@ public interface UserMapper {
     }
 
     @Named("updateText")
-    default String toCamelCase(String text) {
+    default String toTitleCase(String text) {
         if (text == null || text.isEmpty()) {
             return text;
         }
         //change from ADMIN to Admin
         return text.substring(0, 1).toUpperCase() + text.substring(1).toLowerCase();
+    }
+
+    @Named("getCode")
+    default String getCode(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        //change from Admin to ADMIN
+        return UserRoleEnum.findByDescription(text);
     }
 }

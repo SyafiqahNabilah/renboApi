@@ -1,8 +1,11 @@
 package com.rbms.renbo.constant;
 
+import lombok.Getter;
+
+@Getter
 public enum UserStatusEnum {
     ACTIVE("Active"),
-    DEACTIVED("Deactivated"),
+    DEACTIVATED("Deactivated"),
     TERMINATED("Terminated");
 
     private final String description;
@@ -11,7 +14,4 @@ public enum UserStatusEnum {
         this.description = description;
     }
 
-    public String getLDescription() {
-        return this.description;
-    }
 }

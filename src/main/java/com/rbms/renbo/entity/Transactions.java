@@ -1,5 +1,6 @@
 package com.rbms.renbo.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -63,16 +64,16 @@ public class Transactions {
 
     // ─── MONEY ────────────────────────────────────────
     @Column(name = "dailyRate")
-    private float dailyRate;       // snapshot of item rate at time of booking
+    private BigDecimal dailyRate;       // snapshot of item rate at time of booking
 
     @Column(name = "depositAmount")
-    private float depositAmount;   // snapshot of deposit at time of booking
+    private BigDecimal depositAmount;   // snapshot of deposit at time of booking
 
     @Column(name = "totalDays")
     private int totalDays;         // endDate - startDate
 
     @Column(name = "totalAmount")
-    private float totalAmount;     // dailyRate × totalDays
+    private BigDecimal totalAmount;     // dailyRate × totalDays
 
     // ─── PAYMENT ──────────────────────────────────────
     @Enumerated(EnumType.STRING)

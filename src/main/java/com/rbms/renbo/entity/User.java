@@ -31,8 +31,4 @@ public class User {
     @Enumerated(EnumType.STRING)
     private UserStatusEnum status;    // ACTIVE, INACTIVE
 
-    // Only relevant if role = OWNER
-    @ManyToOne
-    @JoinColumn(name = "subsID")
-    private PlanPackage planPackage;
 }

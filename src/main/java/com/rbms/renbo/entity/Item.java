@@ -1,14 +1,8 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.rbms.renbo.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -20,49 +14,48 @@ import java.util.UUID;
 @Data
 @Entity
 @Table(name = "item")
-public class Item implements Serializable {
+public class Item {
     @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "Id")
-    UUID ID;
-    
+    private UUID ID;
     @ManyToOne
     @JoinColumn(name = "ownerID")
-    User owner;
-
+    private User owner;
     @Column(name = "name")
-    String name;
+    private String name;
     @Column(name = "description")
-    String description;
+    private String description;
     @Column(name = "brand")
-    String brand;
+    private String brand;
     @Column(name = "height")
-    String height;
+    private String height;
     @Column(name = "width")
-    String width;
+    private String width;
     @Column(name = "depth")
-    String depth;
+    private String depth;
     @Column(name = "weight")
-    String weight;
+    private String weight;
     @Column(name = "category")
-    String category;
+    private String category;
     @Column(name = "quantity")
-    int quantity;
+    private int quantity;
     @Column(name = "material")
-    String material;
+    private String material;
     @Column(name = "type")
-    String type;
+    private String type;
     @Column(name = "rate")
-    BigDecimal rate;
+    private BigDecimal rate;
     @Column(name = "deposit")
-    BigDecimal deposit;
+    private BigDecimal deposit;
     @Column(name = "pickupMethod")
-    String pickupMethod;
+    private String pickupMethod;
     @Column(name = "itemImage1")
-    String itemImage1;
+    private String itemImage1;
     @Column(name = "itemImage2")
-    String itemImage2;
+    private String itemImage2;
     @Column(name = "itemImage3")
-    String itemImage3;
+    private String itemImage3;
     @Column(name = "availability")
-    String availability;
+    private String availability;
 }

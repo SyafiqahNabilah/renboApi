@@ -40,7 +40,7 @@ public class SecurityConfig {
                 // Public endpoints
                 .requestMatchers("/user/login", "/user/signup/register", "/item/all").permitAll()
                 // Swagger/OpenAPI endpoints
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**","/swagger.json").permitAll()
                 // Static resources
                 .requestMatchers("/css/**", "/js/**", "/img/**", "/favicon.ico", "/logo.png").permitAll()
                 // All other endpoints require authentication

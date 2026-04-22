@@ -2,9 +2,13 @@ package com.rbms.renbo.model;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.util.UUID;
+
 @Data
 public class ItemResponseDto {
 
+    UUID id;
     String name;
     String description;
     String brand;
@@ -16,8 +20,8 @@ public class ItemResponseDto {
     int quantity;
     String material;
     String schema;
-    float rate;
-    float deposit;
+    BigDecimal rate;
+    BigDecimal deposit;
     String pickupMethod;
     String itemImage1;
     String itemImage2;

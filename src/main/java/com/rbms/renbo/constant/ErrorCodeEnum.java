@@ -1,5 +1,8 @@
 package com.rbms.renbo.constant;
 
+import lombok.Getter;
+
+@Getter
 public enum ErrorCodeEnum {
 
     // General
@@ -20,7 +23,9 @@ public enum ErrorCodeEnum {
 
     // Auth
     UNAUTHORIZED(401, "E401", "Unauthorized"),
-    FORBIDDEN(403, "E403", "Access denied");
+    FORBIDDEN(403, "E403", "Access denied"),
+    //item update
+    FORBIDDEN_OWNER_CHANGE(403, "E403_OWNER_CHANGE", "Changing item owner is not allowed");
 
     private final int status;
     private final String code;
@@ -32,7 +37,4 @@ public enum ErrorCodeEnum {
         this.message = message;
     }
 
-    public int getStatus() { return status; }
-    public String getCode() { return code; }
-    public String getMessage() { return message; }
 }

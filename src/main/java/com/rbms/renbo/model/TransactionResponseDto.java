@@ -5,6 +5,7 @@ import com.rbms.renbo.constant.TransactionStatusEnum;
 import com.rbms.renbo.constant.TransactionTypeEnum;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -34,10 +35,10 @@ public class TransactionResponseDto {
     private TransactionStatusEnum transactionStatus;
 
     // Money
-    private Float dailyRate;
-    private Float depositAmount;
+    private BigDecimal dailyRate;
+    private BigDecimal depositAmount;
     private Integer totalDays;
-    private Float totalAmount;
+    private BigDecimal totalAmount;
 
     // Payment
     private PaymentStatusEnum paymentStatus;

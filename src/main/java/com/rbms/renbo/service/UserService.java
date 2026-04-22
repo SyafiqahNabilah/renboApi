@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package com.rbms.renbo.service;
 
 import com.rbms.renbo.config.exception.ApiException;
@@ -13,7 +7,7 @@ import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.UserMapper;
 import com.rbms.renbo.model.*;
 import com.rbms.renbo.repository.UserRepository;
-import com.rbms.renbo.repository.itemRepository;
+import com.rbms.renbo.repository.ItemRepository;
 import com.rbms.renbo.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,15 +22,15 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-public class userService {
+public class UserService {
 
     private final UserRepository repo;
     private final UserMapper mapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final itemRepository itemRepo;
+    private final ItemRepository itemRepo;
 
-    public userService(UserRepository repo, UserMapper mapper, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, itemRepository itemRepo) {
+    public UserService(UserRepository repo, UserMapper mapper, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, ItemRepository itemRepo) {
         this.repo = repo;
         this.mapper = mapper;
         this.passwordEncoder = passwordEncoder;
@@ -45,7 +39,7 @@ public class userService {
     }
 
     public List<UserResponseDto> listAllBasedOnRole(String role) {
-        List<User> users = repo.findByRole(role);
+        List<User> users = repo.findByRole(role.toUpperCase());
         log.debug("looking for this {}", role);
         return users.stream()
                 .map(mapper::toDto)
@@ -56,17 +50,23 @@ public class userService {
 
         Optional<User> isExist = repo.findById(id);
         if (isExist.isPresent()) {
-            repo.updateStatusUser(UserStatusEnum.DEACTIVED.getLDescription(), id);
+            repo.updateStatusUser(UserStatusEnum.DEACTIVATED.name(), id);
             return "Success";
         }
         return "Failed, cannot find user";
+    }
+
+    public String activateUser(UUID id) {
+        repo.findById(id).ifPresent(u ->
+                repo.updateStatusUser(UserStatusEnum.ACTIVE.name(), u.getUserID()));
+        return "Success";
     }
 
     public User findByEmail(String email) {
         return repo.findUserByEmail(email);
     }
 
-    public UserResponseDto insertNewUser(userRegistrationDto user) {
+    public UserResponseDto insertNewUser(UserRegistrationDto user) {
         User existing = findByEmail(user.getEmail());
         if (existing != null) {
             throw new ApiException(ErrorCodeEnum.BAD_REQUEST);
@@ -100,22 +100,16 @@ public class userService {
     public List<UserResponseDto> listAllUsers() {
             List<User> users = repo.findAll();
 
-            return users.stream()
-                    .map(user -> {
-                        UserResponseDto dto = mapper.toDto(user);
-                        Map<UUID, Long> itemCountMap = itemRepo.countItemsByUser()
-                                .stream()
-                                .collect(Collectors.toMap(
-                                        obj -> (UUID) obj[0],
-                                        obj -> (Long) obj[1]
-                                ));
-                        int count = itemCountMap.getOrDefault(user.getUserID(), 0L).intValue();
-                        dto.setItemCount(count);
+        Map<UUID, Long> itemCountMap = itemRepo.countItemsByUser()
+                .stream().collect(Collectors.toMap(
+                        obj -> (UUID) obj[0], obj -> (Long) obj[1]));
 
-                        return dto;
-                    })
-                    .toList();
-        }
+        return users.stream().map(user -> {
+            UserResponseDto dto = mapper.toDto(user);
+            dto.setItemCount(itemCountMap.getOrDefault(user.getUserID(), 0L).intValue());
+            return dto;
+        }).toList();
+    }
 
     public Optional<User> getUserDetails(UUID userId) {
         return repo.findById(userId);

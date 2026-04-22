@@ -31,48 +31,20 @@ public class TransactionController {
 
     @GetMapping("/all")
     public List<TransactionResponseDto> getAllTransactions(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestParam(required = false) String status) {
-
-        // Extract userId from JWT token
-        // For now, this is a placeholder - in production you'd validate the token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         // Extract userId from token (you'd validate the token first in production)
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
+        jwtUtil.validateUserExisting(authHeader);
 
         return transactionService.getAllTransactions();
     }
 
-    @GetMapping("/my-transactions")
+    @GetMapping("/owner")
     public List<TransactionResponseDto> getMyTransactions(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(required = false) String status) {
 
-        // Extract userId from JWT token
-        // For now, this is a placeholder - in production you'd validate the token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        // Extract userId from token (you'd validate the token first in production)
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID ownerId = UUID.fromString(userIdStr);
+        UUID ownerId = jwtUtil.validateUserExisting(authHeader);
 
         if (status != null && !status.isEmpty()) {
             // Filter by status - for now, get all and filter client-side
@@ -89,21 +61,7 @@ public class TransactionController {
     public List<TransactionResponseDto> getMyRentalRequests(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        // Extract userId from JWT token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        // Extract userId from token
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID renterId = UUID.fromString(userIdStr);
+        UUID renterId = jwtUtil.validateUserExisting(authHeader);
 
         return transactionService.findByRenterId(renterId);
     }
@@ -113,21 +71,7 @@ public class TransactionController {
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody RentalRequestDto rentalRequest) {
 
-        // Extract renterId from JWT token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        String renterIdStr = jwtUtil.extractUserId(token);
-        if (renterIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID renterId = UUID.fromString(renterIdStr);
-
+        UUID renterId = jwtUtil.validateUserExisting(authHeader);
         // Look up item to get owner and pricing information
         ItemResponseDto item = itemService.findById(rentalRequest.getItemId());
 
@@ -148,27 +92,13 @@ public class TransactionController {
         return transactionService.createTransaction(transactionRequest);
     }
   
-      @PutMapping("/{id}/approve")
+    @PutMapping("/{id}/approve")
     public TransactionResponseDto approveTransaction(
             @PathVariable Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(required = false) String ownerNote) {
 
-        // Extract userId from JWT token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        // Extract userId from token
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID loggedInUserId = UUID.fromString(userIdStr);
+        UUID loggedInUserId = jwtUtil.validateUserExisting(authHeader);
 
         // Verify that the logged-in user is the item owner and approve the transaction
         return transactionService.approveTransactionWithOwnerValidation(id, loggedInUserId, ownerNote);
@@ -179,21 +109,7 @@ public class TransactionController {
             @PathVariable Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        // Extract userId from JWT token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        // Extract userId from token
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID loggedInUserId = UUID.fromString(userIdStr);
+        UUID loggedInUserId = jwtUtil.validateUserExisting(authHeader);
 
         // Verify that the logged-in user is the item owner and activate the transaction
         return transactionService.activateTransactionWithOwnerValidation(id, loggedInUserId);
@@ -205,21 +121,7 @@ public class TransactionController {
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(required = false) String paymentRef) {
 
-        // Extract userId from JWT token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        // Extract userId from token
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID loggedInUserId = UUID.fromString(userIdStr);
+        UUID loggedInUserId = jwtUtil.validateUserExisting(authHeader);
 
         // Generate payment reference if not provided
         if (paymentRef == null || paymentRef.trim().isEmpty()) {
@@ -234,46 +136,19 @@ public class TransactionController {
             @PathVariable Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        // Extract userId from JWT token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        // Extract userId from token
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID loggedInUserId = UUID.fromString(userIdStr);
+        UUID loggedInUserId = jwtUtil.validateUserExisting(authHeader);
 
         // Verify that the logged-in user is the item owner and complete the transaction
         return transactionService.completeTransactionWithOwnerValidation(id, loggedInUserId);
     }
+
     @PutMapping("/{id}/reject")
     public TransactionResponseDto rejectTransaction(
             @PathVariable Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(required = false) String ownerNote) {
 
-        // Extract userId from JWT token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        // Extract userId from token
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID loggedInUserId = UUID.fromString(userIdStr);
+        UUID loggedInUserId = jwtUtil.validateUserExisting(authHeader);
 
         // Verify that the logged-in user is the item owner and reject the transaction
         return transactionService.rejectTransactionWithOwnerValidation(id, loggedInUserId, ownerNote);
@@ -285,21 +160,7 @@ public class TransactionController {
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(required = false) String note) {
 
-        // Extract userId from JWT token
-        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
-                      authHeader.substring(7) : null;
-
-        if (token == null) {
-            throw new RuntimeException("Authorization token required");
-        }
-
-        // Extract userId from token
-        String userIdStr = jwtUtil.extractUserId(token);
-        if (userIdStr == null) {
-            throw new RuntimeException("Invalid token");
-        }
-
-        UUID loggedInUserId = UUID.fromString(userIdStr);
+        UUID loggedInUserId = jwtUtil.validateUserExisting(authHeader);
 
         // Verify that the logged-in user is the renter or owner and cancel the transaction
         return transactionService.cancelTransactionWithValidation(id, loggedInUserId, note);

@@ -1,14 +1,20 @@
 package com.rbms.renbo.util;
 
+import com.rbms.renbo.config.exception.ApiException;
+import com.rbms.renbo.constant.ErrorCodeEnum;
 import com.rbms.renbo.constant.UserRoleEnum;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.io.DecodingException;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.UUID;
 import java.util.HashMap;
@@ -25,8 +31,46 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private Long jwtExpiration;
 
+    private SecretKey signingKey;
+
+    @PostConstruct
+    void initializeSigningKey() {
+        signingKey = buildSigningKey(jwtSecret);
+    }
+
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        return signingKey;
+    }
+
+    private SecretKey buildSigningKey(String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("jwt.secret must not be blank");
+        }
+
+        byte[] keyBytes = decodeSecret(secret.trim());
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private byte[] decodeSecret(String secret) {
+        // 1. Try Base64 first — accept only if it yields ≥ 32 bytes (256 bits)
+        try {
+            byte[] decoded = Decoders.BASE64.decode(secret);
+            if (decoded.length >= 32) {
+                return decoded;
+            }
+            log.warn("Base64-decoded secret is only {} bits — deriving a 256-bit key via SHA-256", decoded.length * 8);
+        } catch (IllegalArgumentException | DecodingException ex) {
+            // Not Base64 — fall through to UTF-8 path
+        }
+
+        // 2. Hash the raw secret with SHA-256 to guarantee exactly 256 bits
+        try {
+            return java.security.MessageDigest
+                    .getInstance("SHA-256")
+                    .digest(secret.getBytes(StandardCharsets.UTF_8));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 
     public String generateToken(UUID userId, String email, UserRoleEnum role) {
@@ -100,5 +144,22 @@ public class JwtUtil {
             return false;
         }
     }
-}
 
+    public UUID validateUserExisting(String authHeader){
+
+        // Extract renterId from JWT token
+        String token = authHeader != null && authHeader.startsWith("Bearer ") ?
+                authHeader.substring(7) : null;
+
+        if (token == null) {
+            throw new ApiException(ErrorCodeEnum.UNAUTHORIZED, "Authorization token required");
+        }
+
+        String tokenUserStr = extractUserId(token);
+        if (tokenUserStr == null) {
+            throw new ApiException(ErrorCodeEnum.UNAUTHORIZED, "Invalid token");
+        }
+
+        return UUID.fromString(tokenUserStr);
+    }
+}
