@@ -236,6 +236,56 @@ class TransactionServiceTest {
     }
 
     @Test
+    void cancelTransaction_ownerCanCancelPendingAndApproved() {
+        Transactions pendingTransaction = new Transactions();
+        pendingTransaction.setOwner(owner);
+        pendingTransaction.setRenter(renter);
+        pendingTransaction.setTransactionStatus(TransactionStatusEnum.PENDING);
+
+        Transactions approvedTransaction = new Transactions();
+        approvedTransaction.setOwner(owner);
+        approvedTransaction.setRenter(renter);
+        approvedTransaction.setTransactionStatus(TransactionStatusEnum.APPROVED);
+
+        when(transactionRepository.findById(6L)).thenReturn(Optional.of(pendingTransaction));
+        when(transactionRepository.findById(7L)).thenReturn(Optional.of(approvedTransaction));
+        when(transactionRepository.save(any(Transactions.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(transactionMapper.toDto(any(Transactions.class))).thenAnswer(invocation -> {
+            Transactions saved = invocation.getArgument(0);
+            TransactionResponseDto response = new TransactionResponseDto();
+            response.setTransactionStatus(saved.getTransactionStatus());
+            response.setOwnerNote(saved.getOwnerNote());
+            return response;
+        });
+
+        TransactionResponseDto pendingResponse =
+                transactionService.cancelTransactionWithValidation(6L, ownerId, "owner cancelled pending");
+        TransactionResponseDto approvedResponse =
+                transactionService.cancelTransactionWithValidation(7L, ownerId, "owner cancelled approved");
+
+        assertEquals(TransactionStatusEnum.CANCELLED, pendingResponse.getTransactionStatus());
+        assertEquals("owner cancelled pending", pendingResponse.getOwnerNote());
+        assertEquals(TransactionStatusEnum.CANCELLED, approvedResponse.getTransactionStatus());
+        assertEquals("owner cancelled approved", approvedResponse.getOwnerNote());
+    }
+
+    @Test
+    void rejectTransaction_rejectsWhenNotPending() {
+        Transactions transaction = new Transactions();
+        transaction.setOwner(owner);
+        transaction.setTransactionStatus(TransactionStatusEnum.APPROVED);
+
+        when(transactionRepository.findById(8L)).thenReturn(Optional.of(transaction));
+
+        ApiException exception = assertThrows(ApiException.class, () ->
+                transactionService.rejectTransactionWithOwnerValidation(8L, ownerId, "too late to reject")
+        );
+
+        assertEquals(ErrorCodeEnum.BAD_REQUEST, exception.getErrorCode());
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
     void createTransaction_loadsRealItemNotDetachedEntity() {
         TransactionRequestDto request = buildCreateRequest();
         Item itemEntity = new Item();

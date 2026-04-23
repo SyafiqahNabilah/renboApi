@@ -52,7 +52,7 @@ public class UserController {
     @Operation(summary = "Activate user", description = "Activate a user account (requires authentication)")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "User deactivated successfully"),
+            @ApiResponse(responseCode = "200", description = "User activated successfully"),
             @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token"),
             @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions")
     })
