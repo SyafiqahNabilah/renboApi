@@ -93,6 +93,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- MAIL -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- TESTING -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

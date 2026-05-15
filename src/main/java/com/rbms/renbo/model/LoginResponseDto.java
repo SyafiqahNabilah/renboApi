@@ -12,6 +12,9 @@ public class LoginResponseDto {
     private String token;
     private String fullName;
     private String email;
+    private String address;
+    private String phoneNo;
+    private String noAccount;
     private UUID userId;
     private UserRoleEnum role;
 }

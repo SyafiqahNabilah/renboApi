@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -60,7 +61,7 @@ public class UserController {
         return userService.activateUser(id);
     }
 
-    @PutMapping("/deactive/{id}")
+    @PutMapping("/deactivate/{id}")
     @Operation(summary = "Deactivate user", description = "Deactivate a user account (requires authentication)")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
@@ -92,5 +93,45 @@ public class UserController {
     })
     public LoginResponseDto login(@RequestBody LoginRequestDto loginRequest) {
         return userService.login(loginRequest);
+    }
+
+    // ─── NEW: Delete User ────────────────────────────────────────────────────
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Delete user",
+            description = "Permanently deletes a user account. Admin accounts cannot be deleted."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "User deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Cannot delete an admin account"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    public void deleteUser(
+            @PathVariable @Parameter(description = "User ID") UUID id) {
+        userService.deleteUser(id);
+    }
+
+    // ─── NEW: Update User Profile ────────────────────────────────────────────
+
+    @PutMapping("/profile/{id}")
+    @Operation(
+            summary = "Update user profile",
+            description = "Update user profile information including first name, last name, phone, address, and bank account number"
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Profile updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Bad request - invalid input"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    public UserResponseDto updateProfile(
+            @PathVariable @Parameter(description = "User ID") UUID id,
+            @RequestBody UserProfileUpdateDto dto) {
+        return userService.updateProfile(id, dto);
     }
 }

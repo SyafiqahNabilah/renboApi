@@ -33,20 +33,32 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(authz -> authz
-                // Public endpoints
-                .requestMatchers("/user/login", "/user/signup/register", "/item/all").permitAll()
-                // Swagger/OpenAPI endpoints
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**","/swagger.json").permitAll()
-                // Static resources
-                .requestMatchers("/css/**", "/js/**", "/img/**", "/favicon.ico", "/logo.png").permitAll()
-                // All other endpoints require authentication
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(new JwtAuthenticationFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authz -> authz
+                        // Public — auth
+                        .requestMatchers(
+                                "/user/login",
+                                "/user/signup/register",
+                                "/user/forgot-password",   // ← new
+                                "/user/reset-password"     // ← new
+                        ).permitAll()
+                        // Public — browse items
+                        .requestMatchers("/item/all").permitAll()
+                        // Swagger / OpenAPI
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/swagger.json"
+                        ).permitAll()
+                        // Static resources
+                        .requestMatchers("/css/**", "/js/**", "/img/**", "/favicon.ico", "/logo.png").permitAll()
+                        // Everything else requires a valid JWT
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(new JwtAuthenticationFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

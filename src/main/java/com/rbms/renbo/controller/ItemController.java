@@ -4,9 +4,11 @@ import com.rbms.renbo.model.ItemRequestDto;
 import com.rbms.renbo.model.ItemResponseDto;
 import com.rbms.renbo.service.ItemService;
 import com.rbms.renbo.util.JwtUtil;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -14,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,6 +27,7 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("/item")
+@Tag(name = "Item Management", description = "APIs for item management")
 public class ItemController {
 
     private final ItemService itemService;
@@ -84,4 +88,24 @@ public class ItemController {
         UUID ownerId = jwtUtil.validateUserExisting(authHeader);
         itemService.deleteItem(id, ownerId);
     }
+
+    @GetMapping("/search")
+    public List<ItemResponseDto> searchItems(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice) {
+        return itemService.searchItems(keyword, category, minPrice, maxPrice);
+    }
+
+    @GetMapping("/categories")
+    @Operation(summary = "Get all item categories", description = "Retrieve all available item categories in the system (public endpoint)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Categories retrieved successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public List<String> getCategories() {
+        return itemService.getCategories();
+    }
+
 }

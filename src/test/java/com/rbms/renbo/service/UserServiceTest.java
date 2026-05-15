@@ -7,9 +7,12 @@ import com.rbms.renbo.constant.UserStatusEnum;
 import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.UserMapper;
 import com.rbms.renbo.model.*;
+import com.rbms.renbo.repository.ItemRepository;
 import com.rbms.renbo.repository.UserRepository;
 import com.rbms.renbo.util.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,6 +46,9 @@ class UserServiceTest {
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private ItemRepository itemRepository;
 
     @InjectMocks
     private UserService userService;
@@ -334,6 +340,217 @@ class UserServiceTest {
 
         assertTrue(result1.isPresent());
         assertTrue(result2.isEmpty());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // activateUser (NEW)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("activateUser")
+    class ActivateUser {
+
+        @Test
+        @DisplayName("successfully activates an existing user")
+        void activatesExistingUserSuccessfully() {
+            UUID userId = testUser.getUserID();
+            when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+
+            String result = userService.activateUser(userId);
+
+            assertEquals("Success", result);
+            verify(userRepository).findById(userId);
+            verify(userRepository).updateStatusUser(UserStatusEnum.ACTIVE.name(), userId);
+        }
+
+        @Test
+        @DisplayName("returns Success even when user not found (non-throwing behavior)")
+        void returnsSuccessWhenUserNotFound() {
+            UUID userId = UUID.randomUUID();
+            when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+            String result = userService.activateUser(userId);
+
+            assertEquals("Success", result);
+            verify(userRepository).findById(userId);
+            verify(userRepository, never()).updateStatusUser(anyString(), any());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // listAllUsers (NEW)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("listAllUsers")
+    class ListAllUsers {
+
+        @Test
+        @DisplayName("returns all users with item counts")
+        void returnsAllUsersWithItemCounts() {
+            User user1 = testUser;
+            User user2 = new User();
+            user2.setUserID(UUID.randomUUID());
+            user2.setEmail("user2@example.com");
+
+            List<User> allUsers = List.of(user1, user2);
+            UserResponseDto dto1 = new UserResponseDto();
+            dto1.setEmail("test@example.com");
+            UserResponseDto dto2 = new UserResponseDto();
+            dto2.setEmail("user2@example.com");
+
+            // Mock the item count result
+            Object[] countResult1 = {user1.getUserID(), 5L};
+            Object[] countResult2 = {user2.getUserID(), 3L};
+            List<Object[]> countResults = List.of(countResult1, countResult2);
+
+            when(userRepository.findAll()).thenReturn(allUsers);
+            when(itemRepository.countItemsByUser()).thenReturn(countResults);
+            when(userMapper.toDto(user1)).thenReturn(dto1);
+            when(userMapper.toDto(user2)).thenReturn(dto2);
+
+            List<UserResponseDto> result = userService.listAllUsers();
+
+            assertNotNull(result);
+            assertEquals(2, result.size());
+            assertEquals(5, result.get(0).getItemCount());
+            assertEquals(3, result.get(1).getItemCount());
+            verify(userRepository).findAll();
+            verify(itemRepository).countItemsByUser();
+            verify(userMapper, times(2)).toDto(any());
+        }
+
+        @Test
+        @DisplayName("returns empty list when no users exist")
+        void returnsEmptyListWhenNoUsers() {
+            when(userRepository.findAll()).thenReturn(new ArrayList<>());
+            when(itemRepository.countItemsByUser()).thenReturn(new ArrayList<>());
+
+            List<UserResponseDto> result = userService.listAllUsers();
+
+            assertNotNull(result);
+            assertTrue(result.isEmpty());
+            verify(userRepository).findAll();
+            verify(itemRepository).countItemsByUser();
+            verifyNoInteractions(userMapper);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // updateProfile (NEW)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("updateProfile")
+    class UpdateProfile {
+
+        @Test
+        @DisplayName("successfully updates user profile with all fields")
+        void successfullyUpdatesProfileWithAllFields() {
+            UUID userId = testUser.getUserID();
+            UserProfileUpdateDto updateDto = new UserProfileUpdateDto();
+            updateDto.setFirstName("Jane");
+            updateDto.setLastName("Smith");
+            updateDto.setPhoneNo("1234567890");
+            updateDto.setAddress("123 New Street");
+            updateDto.setNoAccount("ACC123456");
+
+            User updatedUser = new User();
+            updatedUser.setUserID(userId);
+            updatedUser.setFirstName("Jane");
+            updatedUser.setLastName("Smith");
+            updatedUser.setEmail("test@example.com");
+
+            UserResponseDto responseDto = new UserResponseDto();
+            responseDto.setEmail("test@example.com");
+
+            when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+            when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+            when(userMapper.toDto(updatedUser)).thenReturn(responseDto);
+
+            UserResponseDto result = userService.updateProfile(userId, updateDto);
+
+            assertNotNull(result);
+            assertEquals(responseDto.getEmail(), result.getEmail());
+            verify(userRepository).findById(userId);
+            verify(userMapper).updateEntityFromProfileDto(updateDto, testUser);
+            verify(userRepository).save(testUser);
+            verify(userMapper).toDto(updatedUser);
+        }
+
+        @Test
+        @DisplayName("throws USER_NOT_FOUND when user does not exist")
+        void throwsUserNotFoundWhenUserDoesNotExist() {
+            UUID userId = UUID.randomUUID();
+            UserProfileUpdateDto updateDto = new UserProfileUpdateDto();
+            updateDto.setFirstName("Jane");
+
+            when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+            ApiException exception = assertThrows(ApiException.class, () ->
+                    userService.updateProfile(userId, updateDto)
+            );
+
+            assertEquals(ErrorCodeEnum.USER_NOT_FOUND, exception.getErrorCode());
+            verify(userRepository).findById(userId);
+            verifyNoInteractions(userMapper);
+            verify(userRepository, never()).save(any());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // deleteUser  (NEW)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("deleteUser")
+    class DeleteUser {
+
+        @Test
+        @DisplayName("deletes a RENTER user successfully")
+        void deletesRenterSuccessfully() {
+            UUID id = testUser.getUserID(); // testUser has role RENTER
+            when(userRepository.findById(id)).thenReturn(Optional.of(testUser));
+
+            assertDoesNotThrow(() -> userService.deleteUser(id));
+            verify(userRepository).delete(testUser);
+        }
+
+        @Test
+        @DisplayName("deletes an OWNER user successfully")
+        void deletesOwnerSuccessfully() {
+            testUser.setRole(UserRoleEnum.OWNER);
+            UUID id = testUser.getUserID();
+            when(userRepository.findById(id)).thenReturn(Optional.of(testUser));
+
+            assertDoesNotThrow(() -> userService.deleteUser(id));
+            verify(userRepository).delete(testUser);
+        }
+
+        @Test
+        @DisplayName("throws USER_NOT_FOUND when user does not exist")
+        void throwsWhenUserNotFound() {
+            UUID id = UUID.randomUUID();
+            when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+            ApiException ex = assertThrows(ApiException.class, () -> userService.deleteUser(id));
+
+            assertEquals(ErrorCodeEnum.USER_NOT_FOUND, ex.getErrorCode());
+            verify(userRepository, never()).delete(any());
+        }
+
+        @Test
+        @DisplayName("throws USER_DELETE_NOT_ALLOWED when target user is ADMIN")
+        void throwsWhenDeletingAdmin() {
+            testUser.setRole(UserRoleEnum.ADMIN);
+            UUID id = testUser.getUserID();
+            when(userRepository.findById(id)).thenReturn(Optional.of(testUser));
+
+            ApiException ex = assertThrows(ApiException.class, () -> userService.deleteUser(id));
+
+            assertEquals(ErrorCodeEnum.USER_DELETE_NOT_ALLOWED, ex.getErrorCode());
+            verify(userRepository, never()).delete(any());
+        }
     }
 }
 

@@ -2,6 +2,7 @@ package com.rbms.renbo.service;
 
 import com.rbms.renbo.config.exception.ApiException;
 import com.rbms.renbo.constant.ErrorCodeEnum;
+import com.rbms.renbo.constant.UserRoleEnum;
 import com.rbms.renbo.constant.UserStatusEnum;
 import com.rbms.renbo.entity.User;
 import com.rbms.renbo.mapper.UserMapper;
@@ -9,6 +10,7 @@ import com.rbms.renbo.model.*;
 import com.rbms.renbo.repository.UserRepository;
 import com.rbms.renbo.repository.ItemRepository;
 import com.rbms.renbo.util.JwtUtil;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -94,7 +96,7 @@ public class UserService {
         String token = jwtUtil.generateToken(user.getUserID(), user.getEmail(), user.getRole());
         
         String fullName = user.getFirstName() + " " + user.getLastName();
-        return new LoginResponseDto(token, fullName, user.getEmail(), user.getUserID(), user.getRole());
+        return new LoginResponseDto(token, fullName, user.getEmail(), user.getAddress(), user.getPhoneNo(), user.getNoAccount(), user.getUserID(), user.getRole());
     }
 
     public List<UserResponseDto> listAllUsers() {
@@ -114,4 +116,43 @@ public class UserService {
     public Optional<User> getUserDetails(UUID userId) {
         return repo.findById(userId);
     }
+
+    /**
+     * Updates a user's own editable profile fields (name, phone, address, bank account).
+     * Email, role, password, and status are intentionally excluded — use dedicated endpoints.
+     * Only non-null fields in the DTO are applied (patch semantics).
+     *
+     * @param userId the ID of the user to update
+     * @param dto    fields to update (null = keep existing value)
+     * @return updated user as response DTO
+     * @throws ApiException USER_NOT_FOUND if no user exists with the given ID
+     */
+    @Transactional
+    public UserResponseDto updateProfile(UUID userId, UserProfileUpdateDto dto) {
+        User user = repo.findById(userId)
+                .orElseThrow(() -> new ApiException(ErrorCodeEnum.USER_NOT_FOUND));
+        mapper.updateEntityFromProfileDto(dto, user);
+        User saved = repo.save(user);
+        log.debug("Profile updated for user {}", userId);
+        return mapper.toDto(saved);
+    }
+
+    /**
+     * Hard-deletes a user by ID. Admin accounts are protected from deletion.
+     *
+     * @param id the ID of the user to delete
+     * @throws ApiException USER_NOT_FOUND         if no user exists with the given ID
+     * @throws ApiException USER_DELETE_NOT_ALLOWED if the target user is an ADMIN
+     */
+    @Transactional
+    public void deleteUser(UUID id) {
+        User user = repo.findById(id)
+                .orElseThrow(() -> new ApiException(ErrorCodeEnum.USER_NOT_FOUND));
+        if (UserRoleEnum.ADMIN.equals(user.getRole())) {
+            throw new ApiException(ErrorCodeEnum.USER_DELETE_NOT_ALLOWED);
+        }
+        repo.delete(user);
+        log.debug("User {} deleted", id);
+    }
+
 }

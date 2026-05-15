@@ -15,6 +15,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -189,5 +190,17 @@ public class ItemService {
         }
 
         return publicBaseUrl.replaceAll("/+$", "") + "/img/products/" + fileName;
+    }
+
+    public List<ItemResponseDto> searchItems(String keyword, String category, BigDecimal minPrice, BigDecimal maxPrice) {
+        List<Item> items = itemRepository.searchItems(keyword, category, minPrice, maxPrice);
+        return items.stream()
+                    .map(mapper::toDto)
+                    .map(this::withImageUrls)
+                    .toList();
+    }
+
+    public List<String> getCategories() {
+        return itemRepository.findDistinctCategories();
     }
 }

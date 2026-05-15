@@ -16,6 +16,12 @@ public enum ErrorCodeEnum {
     // User
     USER_NOT_FOUND(404, "ERRUSER001", "User not found"),
     WRONG_PASSWORD(404, "ERRUSER002", "Password and Email not matched"),
+    USER_DELETE_NOT_ALLOWED(403, "E403_USER_DELETE", "Admin accounts cannot be deleted"),
+    PASSWORDS_DO_NOT_MATCH(400,"E400_PWD_MATCH",  "Passwords do not match"),
+
+    // Password reset
+    RESET_TOKEN_NOT_FOUND(404, "E404_TOKEN",      "Reset token not found or already used"),
+    RESET_TOKEN_EXPIRED(400,   "E400_TOKEN",      "Reset token has expired — please request a new one"),
 
     // Rental
     RENTAL_NOT_FOUND(404, "E404_RENTAL", "Rental not found"),
